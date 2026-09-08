@@ -1,10 +1,10 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { api } from '../../src/api/client';
 import { useAuthStore } from '../../src/store/authStore';
 import { StatusBanner } from '../../src/components/StatusBanner';
-import { Colors, Radius, Spacing } from '../../src/constants/theme';
+import { useColors, Radius, Spacing } from '../../src/constants/theme';
 
 // STATUS: REAL — calls GET /api/messages/:conversationId/messages and
 // POST /api/messages/:conversationId/messages on the live backend.
@@ -30,6 +30,8 @@ interface Message {
 export default function ChatDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const currentUserId = useAuthStore((s) => s.user?.id);
+  const colors = useColors();
+  const styles = useChatStyles(colors);
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -93,7 +95,7 @@ export default function ChatDetailScreen() {
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       {isLoading ? (
-        <ActivityIndicator style={{ marginTop: Spacing.xl }} color={Colors.primary} />
+        <ActivityIndicator style={{ marginTop: Spacing.xl }} color={colors.primary} />
       ) : (
         <FlatList
           data={messages}
@@ -117,7 +119,7 @@ export default function ChatDetailScreen() {
         <TextInput
           style={styles.input}
           placeholder="Type a message"
-          placeholderTextColor={Colors.textMuted}
+          placeholderTextColor={colors.textMuted}
           value={draft}
           onChangeText={setDraft}
           multiline
@@ -128,7 +130,7 @@ export default function ChatDetailScreen() {
           disabled={!draft.trim() || isSending}
         >
           {isSending ? (
-            <ActivityIndicator size="small" color={Colors.white} />
+            <ActivityIndicator size="small" color={colors.white} />
           ) : (
             <Text style={styles.sendButtonText}>Send</Text>
           )}
@@ -138,77 +140,89 @@ export default function ChatDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  error: {
-    color: Colors.danger,
-    textAlign: 'center',
-    fontSize: 13,
-    marginTop: Spacing.sm,
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: Colors.textMuted,
-    marginTop: Spacing.xl,
-    paddingHorizontal: Spacing.lg,
-  },
-  bubble: {
-    borderRadius: Radius.md,
-    padding: Spacing.md,
-    maxWidth: '80%',
-  },
-  bubbleMine: {
-    backgroundColor: Colors.primary,
-    alignSelf: 'flex-end',
-  },
-  bubbleTheirs: {
-    backgroundColor: Colors.white,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignSelf: 'flex-start',
-  },
-  bubbleText: {
-    color: Colors.text,
-    fontSize: 14,
-  },
-  bubbleTextMine: {
-    color: Colors.white,
-  },
-  composer: {
-    flexDirection: 'row',
-    padding: Spacing.md,
-    gap: Spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    backgroundColor: Colors.white,
-    alignItems: 'flex-end',
-  },
-  input: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.md,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    fontSize: 14,
-    color: Colors.text,
-    maxHeight: 100,
-  },
-  sendButton: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.md,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    justifyContent: 'center',
-  },
-  sendButtonDisabled: {
-    opacity: 0.5,
-  },
-  sendButtonText: {
-    color: Colors.white,
-    fontWeight: '700',
-  },
-});
+function useChatStyles(colors: ReturnType<typeof useColors>) {
+  return useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          flex: 1,
+          backgroundColor: colors.background,
+        },
+        error: {
+          color: colors.danger,
+          textAlign: 'center',
+          fontSize: 13,
+          marginTop: Spacing.sm,
+        },
+        emptyText: {
+          textAlign: 'center',
+          color: colors.textMuted,
+          marginTop: Spacing.xl,
+          paddingHorizontal: Spacing.lg,
+        },
+        bubble: {
+          borderRadius: Radius.md,
+          padding: Spacing.md,
+          maxWidth: '80%',
+        },
+        bubbleMine: {
+          backgroundColor: colors.primary,
+          alignSelf: 'flex-end',
+        },
+        bubbleTheirs: {
+          // Was Colors.white — that's correct in light mode (a card
+          // reads as white against a light background) but would stay
+          // pure white in dark mode, recreating the same bug this
+          // whole pass is fixing. colors.surface is the themed
+          // equivalent: white in light mode, dark card gray in dark
+          // mode. See src/constants/theme.ts.
+          backgroundColor: colors.surface,
+          borderWidth: 1,
+          borderColor: colors.border,
+          alignSelf: 'flex-start',
+        },
+        bubbleText: {
+          color: colors.text,
+          fontSize: 14,
+        },
+        bubbleTextMine: {
+          color: colors.white,
+        },
+        composer: {
+          flexDirection: 'row',
+          padding: Spacing.md,
+          gap: Spacing.sm,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+          backgroundColor: colors.surface, // was Colors.white — same fix as bubbleTheirs
+          alignItems: 'flex-end',
+        },
+        input: {
+          flex: 1,
+          borderWidth: 1,
+          borderColor: colors.border,
+          borderRadius: Radius.md,
+          paddingHorizontal: Spacing.md,
+          paddingVertical: Spacing.sm,
+          fontSize: 14,
+          color: colors.text,
+          maxHeight: 100,
+        },
+        sendButton: {
+          backgroundColor: colors.primary,
+          borderRadius: Radius.md,
+          paddingHorizontal: Spacing.md,
+          paddingVertical: Spacing.sm,
+          justifyContent: 'center',
+        },
+        sendButtonDisabled: {
+          opacity: 0.5,
+        },
+        sendButtonText: {
+          color: colors.white,
+          fontWeight: '700',
+        },
+      }),
+    [colors]
+  );
+}

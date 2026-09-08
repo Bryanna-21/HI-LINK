@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { api } from '../../src/api/client';
 import { StatusBanner } from '../../src/components/StatusBanner';
-import { Colors, Radius, Spacing } from '../../src/constants/theme';
+import { useColors, Radius, Spacing } from '../../src/constants/theme';
 
 // STATUS: REAL — calls POST /api/emergency/report on the live backend.
 // type must be exactly "medical" | "safety" | "abuse" (enforced by the
@@ -26,6 +26,8 @@ const EMERGENCY_TYPES = [
 ] as const;
 
 export default function EmergencyScreen() {
+  const colors = useColors();
+  const styles = useEmergencyStyles(colors);
   const [type, setType] = useState<'medical' | 'safety' | 'abuse' | null>(null);
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -82,7 +84,7 @@ export default function EmergencyScreen() {
       <TextInput
         style={styles.messageInput}
         placeholder="Describe what's happening (optional)"
-        placeholderTextColor={Colors.textMuted}
+        placeholderTextColor={colors.textMuted}
         value={message}
         onChangeText={setMessage}
         multiline
@@ -95,7 +97,7 @@ export default function EmergencyScreen() {
         disabled={!type || isSubmitting}
       >
         {isSubmitting ? (
-          <ActivityIndicator color={Colors.white} />
+          <ActivityIndicator color={colors.white} />
         ) : (
           <Text style={styles.submitButtonText}>Submit Report</Text>
         )}
@@ -104,69 +106,80 @@ export default function EmergencyScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-    padding: Spacing.md,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: Colors.text,
-    marginTop: Spacing.md,
-    marginBottom: Spacing.md,
-  },
-  typeRow: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-    marginBottom: Spacing.md,
-  },
-  typeButton: {
-    flex: 1,
-    paddingVertical: Spacing.md,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.white,
-    alignItems: 'center',
-  },
-  typeButtonActive: {
-    borderColor: Colors.danger,
-    backgroundColor: '#FEF2F2',
-  },
-  typeButtonText: {
-    fontSize: 13,
-    color: Colors.text,
-  },
-  typeButtonTextActive: {
-    color: Colors.danger,
-    fontWeight: '700',
-  },
-  messageInput: {
-    backgroundColor: Colors.white,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.md,
-    padding: Spacing.md,
-    fontSize: 15,
-    color: Colors.text,
-    minHeight: 100,
-    textAlignVertical: 'top',
-  },
-  submitButton: {
-    backgroundColor: Colors.danger,
-    borderRadius: Radius.md,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: Spacing.lg,
-  },
-  submitButtonDisabled: {
-    opacity: 0.5,
-  },
-  submitButtonText: {
-    color: Colors.white,
-    fontWeight: '700',
-    fontSize: 16,
-  },
-});
+// Theme-aware styles, rebuilt whenever the active palette changes —
+// same pattern as courses.tsx / community.tsx / explore.tsx. Do not
+// revert this to a module-level StyleSheet.create with a static
+// Colors import; that is the exact bug this fixed (screen stayed
+// white in dark mode because it never re-rendered on theme toggle).
+function useEmergencyStyles(colors: ReturnType<typeof useColors>) {
+  return useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          flex: 1,
+          backgroundColor: colors.background,
+          padding: Spacing.md,
+        },
+        title: {
+          fontSize: 20,
+          fontWeight: '800',
+          color: colors.text,
+          marginTop: Spacing.md,
+          marginBottom: Spacing.md,
+        },
+        typeRow: {
+          flexDirection: 'row',
+          gap: Spacing.sm,
+          marginBottom: Spacing.md,
+        },
+        typeButton: {
+          flex: 1,
+          paddingVertical: Spacing.md,
+          borderRadius: Radius.md,
+          borderWidth: 1,
+          borderColor: colors.border,
+          backgroundColor: colors.surface,
+          alignItems: 'center',
+        },
+        typeButtonActive: {
+          borderColor: colors.danger,
+          backgroundColor: colors.background === '#0A0A0A' ? '#3A1414' : '#FEF2F2',
+        },
+        typeButtonText: {
+          fontSize: 13,
+          color: colors.text,
+        },
+        typeButtonTextActive: {
+          color: colors.danger,
+          fontWeight: '700',
+        },
+        messageInput: {
+          backgroundColor: colors.surface,
+          borderWidth: 1,
+          borderColor: colors.border,
+          borderRadius: Radius.md,
+          padding: Spacing.md,
+          fontSize: 15,
+          color: colors.text,
+          minHeight: 100,
+          textAlignVertical: 'top',
+        },
+        submitButton: {
+          backgroundColor: colors.danger,
+          borderRadius: Radius.md,
+          paddingVertical: 16,
+          alignItems: 'center',
+          marginTop: Spacing.lg,
+        },
+        submitButtonDisabled: {
+          opacity: 0.5,
+        },
+        submitButtonText: {
+          color: colors.white,
+          fontWeight: '700',
+          fontSize: 16,
+        },
+      }),
+    [colors]
+  );
+}
