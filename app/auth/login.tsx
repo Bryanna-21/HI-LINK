@@ -91,7 +91,9 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.content}>
-        <Text style={styles.title}>UniLink</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          UniLink
+        </Text>
         <Text style={styles.subtitle}>Connect · Learn · Grow</Text>
 
         <View style={styles.form}>
@@ -104,6 +106,7 @@ export default function LoginScreen() {
             autoCapitalize="none"
             keyboardType="email-address"
             editable={!isLoading}
+            accessibilityLabel="Email"
           />
           <TextInput
             style={styles.input}
@@ -113,11 +116,16 @@ export default function LoginScreen() {
             onChangeText={setPassword}
             secureTextEntry
             editable={!isLoading}
+            accessibilityLabel="Password"
           />
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? (
+            <Text style={styles.error} accessibilityLiveRegion="polite">
+              {error}
+            </Text>
+          ) : null}
           {isWakingServer ? (
-            <Text style={styles.wakingNote}>
+            <Text style={styles.wakingNote} accessibilityLiveRegion="polite">
               Waking up the server — this can take up to a minute on a cold start.
             </Text>
           ) : null}
@@ -126,18 +134,21 @@ export default function LoginScreen() {
             style={[styles.button, isLoading && styles.buttonDisabled]}
             onPress={handleLogin}
             disabled={isLoading}
+            accessibilityRole="button"
+            accessibilityLabel="Log in"
+            accessibilityState={{ disabled: isLoading, busy: isLoading }}
           >
             {isLoading ? <ActivityIndicator color={colors.white} /> : <Text style={styles.buttonText}>Log In</Text>}
           </TouchableOpacity>
 
           <Link href="/auth/forgot-password" asChild>
-            <TouchableOpacity style={styles.linkButton}>
+            <TouchableOpacity style={styles.linkButton} accessibilityRole="link">
               <Text style={styles.linkText}>Forgot your password?</Text>
             </TouchableOpacity>
           </Link>
 
           <Link href="/auth/register" asChild>
-            <TouchableOpacity style={styles.linkButton}>
+            <TouchableOpacity style={styles.linkButton} accessibilityRole="link">
               <Text style={styles.linkText}>
                 Don't have an account? <Text style={styles.linkTextBold}>Sign up</Text>
               </Text>

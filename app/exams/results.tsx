@@ -128,8 +128,14 @@ export default function ExamResultsScreen() {
       refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => loadResults(true)} />}
     >
       <View style={styles.header}>
-        <Text style={styles.title}>My Results</Text>
-        <TouchableOpacity onPress={() => router.replace('/exams')}>
+        <Text style={styles.title} accessibilityRole="header">
+          My Results
+        </Text>
+        <TouchableOpacity
+          onPress={() => router.replace('/exams')}
+          accessibilityRole="button"
+          accessibilityLabel="Back to Exams"
+        >
           <Text style={styles.backLink}>Back to Exams</Text>
         </TouchableOpacity>
       </View>

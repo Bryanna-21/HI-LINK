@@ -145,8 +145,14 @@ export default function ExamsScreen() {
       refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => loadExams(true)} />}
     >
       <View style={styles.header}>
-        <Text style={styles.title}>My Exams</Text>
-        <TouchableOpacity onPress={() => router.push('/exams/results' as any)}>
+        <Text style={styles.title} accessibilityRole="header">
+          My Exams
+        </Text>
+        <TouchableOpacity
+          onPress={() => router.push('/exams/results' as any)}
+          accessibilityRole="button"
+          accessibilityLabel="My Results"
+        >
           <Text style={styles.resultsLink}>My Results</Text>
         </TouchableOpacity>
       </View>
@@ -184,50 +190,61 @@ export default function ExamsScreen() {
         exams.map((exam) => {
           const badge = statusColors[exam.status] ?? statusColors.Draft;
           return (
-            <TouchableOpacity
-              key={exam._id}
-              style={styles.card}
-              onPress={() => router.push(`/exams/${exam._id}` as any)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.cardHeader}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.cardTitle}>{exam.title}</Text>
-                  {exam.courseId ? <Text style={styles.cardCourse}>{exam.courseId}</Text> : null}
+            // Plain View, not TouchableOpacity — was previously a
+            // touchable wrapping a second touchable ("Take Exam"),
+            // which is a real accessibility problem, not just a style
+            // nitpick: nested touchables confuse a screen reader's
+            // sense of what's actually tappable and where one target
+            // ends and the next begins. The two real actions (view
+            // detail, take exam) are now true siblings.
+            <View key={exam._id} style={styles.card}>
+              <TouchableOpacity
+                onPress={() => router.push(`/exams/${exam._id}` as any)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={`View details: ${exam.title}, ${exam.status}, ${exam.duration} minutes, ${exam.totalMarks} marks`}
+              >
+                <View style={styles.cardHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cardTitle}>{exam.title}</Text>
+                    {exam.courseId ? <Text style={styles.cardCourse}>{exam.courseId}</Text> : null}
+                  </View>
+                  <View style={[styles.statusBadge, { backgroundColor: badge.bg }]}>
+                    <Text style={[styles.statusText, { color: badge.text }]}>{exam.status}</Text>
+                  </View>
                 </View>
-                <View style={[styles.statusBadge, { backgroundColor: badge.bg }]}>
-                  <Text style={[styles.statusText, { color: badge.text }]}>{exam.status}</Text>
-                </View>
-              </View>
 
-              <View style={styles.metaRow}>
-                <View style={styles.metaItem}>
-                  <Text style={styles.metaLabel}>Duration</Text>
-                  <Text style={styles.metaValue}>{exam.duration} mins</Text>
+                <View style={styles.metaRow}>
+                  <View style={styles.metaItem}>
+                    <Text style={styles.metaLabel}>Duration</Text>
+                    <Text style={styles.metaValue}>{exam.duration} mins</Text>
+                  </View>
+                  <View style={styles.metaItem}>
+                    <Text style={styles.metaLabel}>Marks</Text>
+                    <Text style={styles.metaValue}>{exam.totalMarks}</Text>
+                  </View>
+                  <View style={styles.metaItem}>
+                    <Text style={styles.metaLabel}>Questions</Text>
+                    <Text style={styles.metaValue}>{exam.questions?.length ?? 0}</Text>
+                  </View>
+                  <View style={styles.metaItem}>
+                    <Text style={styles.metaLabel}>Starts</Text>
+                    <Text style={styles.metaValue}>{formatDate(exam.startTime)}</Text>
+                  </View>
                 </View>
-                <View style={styles.metaItem}>
-                  <Text style={styles.metaLabel}>Marks</Text>
-                  <Text style={styles.metaValue}>{exam.totalMarks}</Text>
-                </View>
-                <View style={styles.metaItem}>
-                  <Text style={styles.metaLabel}>Questions</Text>
-                  <Text style={styles.metaValue}>{exam.questions?.length ?? 0}</Text>
-                </View>
-                <View style={styles.metaItem}>
-                  <Text style={styles.metaLabel}>Starts</Text>
-                  <Text style={styles.metaValue}>{formatDate(exam.startTime)}</Text>
-                </View>
-              </View>
+              </TouchableOpacity>
 
               {exam.status === 'Published' ? (
                 <TouchableOpacity
                   style={styles.takeButton}
                   onPress={() => router.push(`/exams/${exam._id}/take` as any)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Take exam: ${exam.title}`}
                 >
                   <Text style={styles.takeButtonText}>Take Exam</Text>
                 </TouchableOpacity>
               ) : null}
-            </TouchableOpacity>
+            </View>
           );
         })
       )}

@@ -351,8 +351,15 @@ export default function TakeExamScreen() {
               key={i}
               style={[styles.optionCard, selected && styles.optionCardSelected]}
               onPress={() => updateAnswer(option)}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: selected }}
+              accessibilityLabel={option}
             >
-              <View style={[styles.radioOuter, selected && styles.radioOuterSelected]}>
+              <View
+                style={[styles.radioOuter, selected && styles.radioOuterSelected]}
+                accessibilityElementsHidden
+                importantForAccessibility="no"
+              >
                 {selected ? <View style={styles.radioInner} /> : null}
               </View>
               <Text style={styles.optionText}>{option}</Text>
@@ -367,8 +374,15 @@ export default function TakeExamScreen() {
               key={option}
               style={[styles.optionCard, selected && styles.optionCardSelected]}
               onPress={() => updateAnswer(option)}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: selected }}
+              accessibilityLabel={option}
             >
-              <View style={[styles.radioOuter, selected && styles.radioOuterSelected]}>
+              <View
+                style={[styles.radioOuter, selected && styles.radioOuterSelected]}
+                accessibilityElementsHidden
+                importantForAccessibility="no"
+              >
                 {selected ? <View style={styles.radioInner} /> : null}
               </View>
               <Text style={styles.optionText}>{option}</Text>
@@ -385,6 +399,7 @@ export default function TakeExamScreen() {
             multiline
             value={answers[question._id] ?? ''}
             onChangeText={updateAnswer}
+            accessibilityLabel="Your answer"
           />
         );
       default:
@@ -398,10 +413,16 @@ export default function TakeExamScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.examTitle}>{exam.title}</Text>
+          <Text style={styles.examTitle} accessibilityRole="header">
+            {exam.title}
+          </Text>
           {exam.courseId ? <Text style={styles.examCourse}>{exam.courseId}</Text> : null}
         </View>
-        <View style={[styles.timerBox, isUrgent && styles.timerBoxUrgent]}>
+        <View
+          style={[styles.timerBox, isUrgent && styles.timerBoxUrgent]}
+          accessibilityLabel={`Time remaining: ${minutes} minutes ${seconds} seconds`}
+          accessibilityLiveRegion={isUrgent ? 'assertive' : 'none'}
+        >
           <Text style={[styles.timerText, isUrgent && styles.timerTextUrgent]}>
             {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
           </Text>
@@ -412,7 +433,12 @@ export default function TakeExamScreen() {
         <View style={[styles.progressBarFill, { width: `${progress * 100}%` }]} />
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pager}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.pager}
+        accessibilityRole="tablist"
+      >
         {exam.questions.map((q, index) => {
           const answered = !!answers[q._id];
           const active = index === currentQuestion;
@@ -421,6 +447,9 @@ export default function TakeExamScreen() {
               key={q._id}
               style={[styles.pagerDot, active && styles.pagerDotActive, !active && answered && styles.pagerDotAnswered]}
               onPress={() => setCurrentQuestion(index)}
+              accessibilityRole="tab"
+              accessibilityLabel={`Question ${index + 1}${answered ? ', answered' : ', not answered'}`}
+              accessibilityState={{ selected: active }}
             >
               <Text style={[styles.pagerDotText, active && styles.pagerDotTextActive]}>{index + 1}</Text>
             </TouchableOpacity>
@@ -431,11 +460,17 @@ export default function TakeExamScreen() {
       <ScrollView style={styles.content}>
         <View style={styles.questionCard}>
           <View style={styles.questionTop}>
-            <Text style={styles.questionNumber}>Question {currentQuestion + 1}</Text>
+            <Text style={styles.questionNumber} accessibilityRole="header">
+              Question {currentQuestion + 1}
+            </Text>
             <Text style={styles.questionMarks}>{question.marks} Marks</Text>
           </View>
           <Text style={styles.questionText}>{question.text}</Text>
-          {renderQuestionInput()}
+          <View
+            accessibilityRole={question.type === 'mcq' || question.type === 'truefalse' ? 'radiogroup' : undefined}
+          >
+            {renderQuestionInput()}
+          </View>
         </View>
       </ScrollView>
 
@@ -444,6 +479,9 @@ export default function TakeExamScreen() {
           style={[styles.navButton, styles.navButtonSecondary, currentQuestion === 0 && styles.navButtonDisabled]}
           disabled={currentQuestion === 0}
           onPress={() => setCurrentQuestion((p) => p - 1)}
+          accessibilityRole="button"
+          accessibilityLabel="Previous question"
+          accessibilityState={{ disabled: currentQuestion === 0 }}
         >
           <Text style={styles.navButtonText}>Previous</Text>
         </TouchableOpacity>
@@ -453,6 +491,9 @@ export default function TakeExamScreen() {
             style={[styles.navButton, styles.navButtonSuccess]}
             disabled={submitting}
             onPress={() => setShowSubmitDialog(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Submit exam"
+            accessibilityState={{ disabled: submitting }}
           >
             <Text style={styles.navButtonTextLight}>Submit Exam</Text>
           </TouchableOpacity>
@@ -460,6 +501,8 @@ export default function TakeExamScreen() {
           <TouchableOpacity
             style={[styles.navButton, styles.navButtonPrimary]}
             onPress={() => setCurrentQuestion((p) => p + 1)}
+            accessibilityRole="button"
+            accessibilityLabel="Next question"
           >
             <Text style={styles.navButtonTextLight}>Next</Text>
           </TouchableOpacity>
@@ -468,8 +511,10 @@ export default function TakeExamScreen() {
 
       <Modal visible={showSubmitDialog} transparent animationType="fade">
         <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Submit Examination?</Text>
+          <View style={styles.modalCard} accessibilityViewIsModal accessibilityRole="alert">
+            <Text style={styles.modalTitle} accessibilityRole="header">
+              Submit Examination?
+            </Text>
             <Text style={styles.modalText}>
               You have answered {answeredCount} of {exam.questions.length} questions.
             </Text>
@@ -477,6 +522,8 @@ export default function TakeExamScreen() {
               <TouchableOpacity
                 style={[styles.navButton, styles.navButtonSecondary]}
                 onPress={() => setShowSubmitDialog(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Continue exam"
               >
                 <Text style={styles.navButtonText}>Continue Exam</Text>
               </TouchableOpacity>
@@ -484,6 +531,9 @@ export default function TakeExamScreen() {
                 style={[styles.navButton, styles.navButtonSuccess]}
                 disabled={submitting}
                 onPress={handleSubmit}
+                accessibilityRole="button"
+                accessibilityLabel="Confirm submit"
+                accessibilityState={{ disabled: submitting, busy: submitting }}
               >
                 {submitting ? (
                   <ActivityIndicator color={colors.white} />
@@ -498,8 +548,10 @@ export default function TakeExamScreen() {
 
       <Modal visible={showExitDialog} transparent animationType="fade">
         <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Leave Exam?</Text>
+          <View style={styles.modalCard} accessibilityViewIsModal accessibilityRole="alert">
+            <Text style={styles.modalTitle} accessibilityRole="header">
+              Leave Exam?
+            </Text>
             <Text style={styles.modalText}>
               Your answers are saved on this device, but the timer keeps running even if you leave.
             </Text>
@@ -507,6 +559,8 @@ export default function TakeExamScreen() {
               <TouchableOpacity
                 style={[styles.navButton, styles.navButtonSecondary]}
                 onPress={() => setShowExitDialog(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Stay in exam"
               >
                 <Text style={styles.navButtonText}>Stay</Text>
               </TouchableOpacity>
@@ -516,6 +570,8 @@ export default function TakeExamScreen() {
                   setShowExitDialog(false);
                   router.replace('/exams');
                 }}
+                accessibilityRole="button"
+                accessibilityLabel="Leave exam"
               >
                 <Text style={styles.navButtonTextLight}>Leave</Text>
               </TouchableOpacity>

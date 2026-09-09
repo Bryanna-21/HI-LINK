@@ -261,15 +261,26 @@ export default function HomeScreen() {
           <Text style={styles.role}>{user?.role} {user?.universityId ? `· ${user.universityId}` : ''}</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.md }}>
-          <TouchableOpacity onPress={() => router.push('/notifications' as any)} style={styles.bellButton}>
-            <Text style={styles.bellIcon}>🔔</Text>
+          <TouchableOpacity
+            onPress={() => router.push('/notifications' as any)}
+            style={styles.bellButton}
+            accessibilityRole="button"
+            accessibilityLabel={
+              unreadNotifCount > 0
+                ? `Notifications, ${unreadNotifCount} unread`
+                : 'Notifications'
+            }
+          >
+            <Text style={styles.bellIcon} accessibilityElementsHidden importantForAccessibility="no">
+              🔔
+            </Text>
             {unreadNotifCount > 0 ? (
-              <View style={styles.bellBadge}>
+              <View style={styles.bellBadge} accessibilityElementsHidden importantForAccessibility="no">
                 <Text style={styles.bellBadgeText}>{unreadNotifCount > 9 ? '9+' : unreadNotifCount}</Text>
               </View>
             ) : null}
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleLogout}>
+          <TouchableOpacity onPress={handleLogout} accessibilityRole="button" accessibilityLabel="Log out">
             <Text style={styles.logout}>Log out</Text>
           </TouchableOpacity>
         </View>
@@ -278,7 +289,9 @@ export default function HomeScreen() {
       <StatusBanner status="real" note="Greeting and role come from your real account." />
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Today's Classes</Text>
+        <Text style={styles.sectionTitle} accessibilityRole="header">
+          Today's Classes
+        </Text>
         <StatusBanner status="real" note="Pulled live from your enrolled courses' timetables." />
         {isLoading ? (
           <ActivityIndicator style={styles.spinner} color={colors.primary} />
@@ -287,7 +300,12 @@ export default function HomeScreen() {
             <Text style={styles.emptyText}>{loadError}</Text>
           </View>
         ) : classesToday.length === 0 ? (
-          <TouchableOpacity style={styles.emptyCard} onPress={() => router.push('/(tabs)/courses')}>
+          <TouchableOpacity
+            style={styles.emptyCard}
+            onPress={() => router.push('/(tabs)/courses')}
+            accessibilityRole="button"
+            accessibilityLabel="No classes today. View Courses."
+          >
             <Text style={styles.emptyText}>No classes today. Tap to view Courses.</Text>
           </TouchableOpacity>
         ) : (
@@ -305,7 +323,9 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Continue Learning</Text>
+        <Text style={styles.sectionTitle} accessibilityRole="header">
+          Continue Learning
+        </Text>
         <StatusBanner status="real" note="Notes are pulled live from your enrolled courses." />
         {isLoading ? (
           <ActivityIndicator style={styles.spinner} color={colors.primary} />
@@ -314,7 +334,12 @@ export default function HomeScreen() {
             <Text style={styles.emptyText}>{loadError}</Text>
           </View>
         ) : notes.length === 0 ? (
-          <TouchableOpacity style={styles.emptyCard} onPress={() => router.push('/(tabs)/courses')}>
+          <TouchableOpacity
+            style={styles.emptyCard}
+            onPress={() => router.push('/(tabs)/courses')}
+            accessibilityRole="button"
+            accessibilityLabel="No recent notes yet. View Courses."
+          >
             <Text style={styles.emptyText}>No recent notes yet. Tap to view Courses.</Text>
           </TouchableOpacity>
         ) : (
@@ -328,7 +353,9 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Upcoming CAT</Text>
+        <Text style={styles.sectionTitle} accessibilityRole="header">
+          Upcoming CAT
+        </Text>
         <StatusBanner status="real" note="CATs are pulled live from your enrolled courses." />
         {isLoading ? (
           <ActivityIndicator style={styles.spinner} color={colors.primary} />
@@ -337,7 +364,12 @@ export default function HomeScreen() {
             <Text style={styles.emptyText}>{loadError}</Text>
           </View>
         ) : cats.length === 0 ? (
-          <TouchableOpacity style={styles.emptyCard} onPress={() => router.push('/(tabs)/courses')}>
+          <TouchableOpacity
+            style={styles.emptyCard}
+            onPress={() => router.push('/(tabs)/courses')}
+            accessibilityRole="button"
+            accessibilityLabel="No CATs scheduled. View Courses."
+          >
             <Text style={styles.emptyText}>No CATs scheduled. Tap to view Courses.</Text>
           </TouchableOpacity>
         ) : (
@@ -346,6 +378,8 @@ export default function HomeScreen() {
               key={cat._id}
               style={styles.emptyCard}
               onPress={() => router.push(`/cat/${cat._id}` as any)}
+              accessibilityRole="button"
+              accessibilityLabel={`${cat.title}, ${cat.courseTitle}${cat.date ? `, ${cat.date}` : ''}`}
             >
               <Text style={styles.noteTitle}>{cat.title}</Text>
               <Text style={styles.noteCourse}>
@@ -357,7 +391,9 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Attendance</Text>
+        <Text style={styles.sectionTitle} accessibilityRole="header">
+          Attendance
+        </Text>
         <StatusBanner status="real" note="Sign in per course for today. One signature per day, enforced by the backend." />
         {isLoading ? (
           <ActivityIndicator style={styles.spinner} color={colors.primary} />
@@ -381,6 +417,12 @@ export default function HomeScreen() {
                     style={styles.signButton}
                     disabled={signingCourseId === a.courseId}
                     onPress={() => handleSignAttendance(a.courseId, a.courseTitle)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Sign attendance for ${a.courseTitle}`}
+                    accessibilityState={{
+                      disabled: signingCourseId === a.courseId,
+                      busy: signingCourseId === a.courseId,
+                    }}
                   >
                     <Text style={styles.signButtonText}>
                       {signingCourseId === a.courseId ? 'Signing…' : 'Sign in'}
@@ -394,23 +436,31 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
+        <Text style={styles.sectionTitle} accessibilityRole="header">
+          Quick Actions
+        </Text>
         <View style={styles.quickActions}>
           <TouchableOpacity
             style={[styles.quickAction, { backgroundColor: colors.danger }]}
             onPress={() => router.push('/(tabs)/emergency' as any)}
+            accessibilityRole="button"
+            accessibilityLabel="Emergency"
           >
             <Text style={styles.quickActionText}>🆘 Emergency</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.quickAction, { backgroundColor: colors.accent }]}
             onPress={() => router.push('/ai' as any)}
+            accessibilityRole="button"
+            accessibilityLabel="Ask AI"
           >
             <Text style={styles.quickActionText}>✨ Ask AI</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.quickAction, { backgroundColor: colors.secondary }]}
             onPress={() => router.push('/lost-and-found' as any)}
+            accessibilityRole="button"
+            accessibilityLabel="Lost and Found"
           >
             <Text style={styles.quickActionText}>🔎 Lost & Found</Text>
           </TouchableOpacity>

@@ -85,8 +85,14 @@ export default function CoursesScreen() {
       refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => loadCourses(true)} />}
     >
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Courses</Text>
-        <TouchableOpacity onPress={() => router.push('/exams' as any)}>
+        <Text style={styles.title} accessibilityRole="header">
+          Courses
+        </Text>
+        <TouchableOpacity
+          onPress={() => router.push('/exams' as any)}
+          accessibilityRole="button"
+          accessibilityLabel="Exams"
+        >
           <Text style={styles.examsLink}>Exams</Text>
         </TouchableOpacity>
       </View>
@@ -108,6 +114,8 @@ export default function CoursesScreen() {
             key={course._id}
             style={styles.card}
             onPress={() => router.push(`/course/${course._id}` as any)}
+            accessibilityRole="button"
+            accessibilityLabel={course.code ? `${course.title}, ${course.code}` : course.title}
           >
             <Text style={styles.cardTitle}>{course.title}</Text>
             {course.code ? <Text style={styles.cardCode}>{course.code}</Text> : null}
