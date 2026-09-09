@@ -66,7 +66,7 @@ first (it's harder to forget to update) but fix this file too.
 
 | Item | Status | Notes |
 |---|---|---|
-| Chats | 🚧 SHELL | UI + local-only send exists. A socket.io *server* now exists on the backend (added since this doc was last accurate — built for the Admin Panel's live notifications), but it only admits admin-role JWTs into one "admins" room. No student-facing events, rooms, or Message/Conversation model exist yet — real chat is still its own build, not just "point at the existing server." |
+| Chats | ✅ REAL | Messages genuinely save to and load from the backend (`GET/POST /messages/:id/messages`) — **this doc previously said "local-only send," which was stale; confirmed by reading the code and by the screen's own in-app StatusBanner.** No live push layer: the screen polls every 4 seconds rather than receiving messages instantly. A socket.io server exists on the backend (added for the Admin Panel's live notifications) but only admits admin-role JWTs into an "admins" room — no student-facing events or rooms exist, so real-time delivery for chat is still a separate, unbuilt piece, not just "point the client at the existing server." |
 | Voice notes, file sharing | ⛔ NOT BUILT | |
 | Typing indicator, read receipts | ⛔ NOT BUILT | Needs Socket.io wired up on both ends. |
 | Voice/video calls | ⛔ NOT BUILT | Explicitly deferred in spec too ("future"). |
@@ -128,20 +128,66 @@ first (it's harder to forget to update) but fix this file too.
 | Certificate pinning | ⛔ NOT BUILT | |
 | Push notifications | ⛔ NOT BUILT | Needs `expo-notifications` + backend to trigger them. |
 
+## Exams
+
+| Item | Status | Notes |
+|---|---|---|
+| Exam list (student) | ✅ REAL | New tonight. `app/exams/index.tsx` calls `GET /exams`, matching web's `examService.js` `getStudentExams` exactly. Zero mobile presence before this — genuinely missing, not previously documented anywhere. |
+| Take exam | ✅ REAL | New tonight. `app/exams/[id]/take.tsx` — full state machine ported from web's `TakeExam.js`: countdown timer with auto-submit at zero, per-question navigation, MCQ/true-false/essay/short question types, submit confirmation dialog. Answer drafts persist to AsyncStorage (not SecureStore — these aren't credentials) so a crash mid-exam doesn't lose progress, same intent as web's localStorage draft-save. Deliberately NOT ported: web's fullscreen-on-request anti-cheat measure, since `requestFullscreen()` is a browser API with no native equivalent (a mobile app is already fullscreen). Added, with no web counterpart to match: a hardware back-button confirmation dialog, since accidentally backing out mid-timed-exam is a one-tap native accident that doesn't have a browser-back analog. |
+| Results | ✅ REAL | New tonight. `app/exams/results.tsx` calls `GET /exams/results/me`, matching `getStudentResults`. Deliberately NOT ported: web's "Download" and "Print Results" buttons — both are cosmetic on web itself (download only shows a toast with no real file; print calls `window.print()`, no native equivalent), so building fake versions here would be a regression, not parity. |
+| Lecturer exam creation/grading | ⛔ NOT BUILT | Web has a full 11-file Lecturer role surface (`Lecturer/CreateExam.js`, `GradeSubmissions.js`, etc., ~2,635 lines total) with no mobile equivalent at all. Out of scope for tonight's pass — this is its own dedicated build, not a quick add, and mobile currently has zero role-gated navigation pattern to build it on top of. |
+
+## Auth (additions)
+
+| Item | Status | Notes |
+|---|---|---|
+| Forgot password (pre-login reset) | ✅ REAL | New tonight. `app/auth/forgot-password.tsx` — two-step flow (email → code + new password), added to `authStore.ts` as `forgotPassword`/`resetPassword`, matching web's `AuthContext.js` payload shape exactly (`resetPassword` sends all four fields to the backend, including `confirmNewPassword` — the server re-validates the match itself rather than trusting the client check alone). Wired into `login.tsx` via a new "Forgot your password?" link; the screen was built once already this session without that link and was unreachable until caught. |
+
+## Profile (additions)
+
+| Item | Status | Notes |
+|---|---|---|
+| Edit Profile (name, bio) | ⚠️ UNVERIFIED ENDPOINT | New tonight. `app/profile/edit.tsx` calls `PUT /users/profile`, matching web's `EditProfile.js` exactly. Flagging honestly: this endpoint does NOT appear in `userService.js`, which is the audited, backend-confirmed service file — its own header comment describes being rewritten after a prior speculative-API mismatch. `/users/profile` may not exist on the backend at all. Built anyway because it matches web's real behavior exactly, so if it's dead, it's dead identically on both platforms — but this needs confirming against actual backend routes before anyone relies on it. Wired into `profile.tsx` via a new "Edit Profile" link row. |
+
+## Cross-cutting fixes (tonight)
+
+| Item | Status | Notes |
+|---|---|---|
+| Tab bar dark mode | ✅ FIXED | `app/(tabs)/_layout.tsx` imported the static `Colors` object instead of `useColors()`, so the tab bar stayed pure white at the bottom of every screen, all the time, even in dark mode — visible on all five tabs. Same bug class as the two below. Not previously documented anywhere; found by checking the layout file directly, not by a screenshot. |
+| Emergency screen dark mode | ✅ FIXED | `app/(tabs)/emergency.tsx` had the identical static-`Colors`-import bug. Also caught and fixed a second latent issue while in the file: the active-type-button highlight was hardcoded to pale pink, which would have looked equally broken against a dark background once the main bug was fixed. |
+| Orphaned duplicate chat route | ✅ FIXED (deleted) | `app/messages/chat[id].tsx` was a dead, unreachable duplicate of the real, live `app/chat/[id].tsx` — nothing in the app ever navigated to it. Deleted rather than fixed, since the live twin was already correct. |
+
 ## Honest summary
 
 Real, working, end to end: **Login, Register, Post feed, Emergency
-report, Profile view, Home greeting.** Everything else in this
-document is either a UI shell with no backend behind it, or not
-present in the app at all yet.
+report, Profile view, Home greeting, Messaging (polling, not
+real-time), Exams (list/take/results), Forgot Password.** Everything
+else in this document is either a UI shell with no backend behind it,
+or not present in the app at all yet. Edit Profile is built but calls
+an endpoint (`/users/profile`) not present in the audited service
+layer — treat as unverified until confirmed against real backend
+routes.
 
-26 screens exist and are fully navigable — no dead links, every
-button goes somewhere. Newly added since the first pass: AI Assistant
-(chat-shaped, no LLM connected), Event detail with local-only RSVP,
-CAT detail, Past Paper detail, Lost & Found. Course detail, Explore,
-and Events now link into their real sub-screens instead of showing
-inert cards.
+31 screens exist and are fully navigable — no dead links, every
+button goes somewhere (this count includes tonight's three new Exam
+screens and the Forgot Password / Edit Profile screens; verified each
+is actually linked from somewhere, since a screen with no navigation
+path in is functionally the same as not existing). Newly added since
+the last pass: AI Assistant (chat-shaped, no LLM connected), Event
+detail with local-only RSVP, CAT detail, Past Paper detail, Lost &
+Found. Course detail, Explore, and Events now link into their real
+sub-screens instead of showing inert cards.
+
+Tonight's session also corrected a stale entry in this document
+(Messaging was marked SHELL when the code and in-app banner both say
+otherwise) and found/fixed three dark-mode bugs — the tab bar, the
+Emergency screen, and an orphaned duplicate chat route — none of
+which were previously documented here or caught by the screenshots
+that prompted this session.
 
 This file should shrink the "SHELL" and "NOT BUILT" rows over time as
 real backend features ship — that is the actual next phase of this
-project, not a footnote.
+project, not a footnote. The single highest-leverage next step, based
+on tonight's audit, is the Lecturer role surface: web has a full
+~2,635-line, 11-screen implementation with zero mobile equivalent, and
+mobile currently has no role-gated navigation pattern to build it on.

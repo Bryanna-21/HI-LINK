@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { View, Text } from 'react-native';
-import { Colors } from '../../src/constants/theme';
+import { useColors } from '../../src/constants/theme';
 
 // Simple text-glyph icons for now — no icon library added yet since
 // none was needed until this exact point. Swappable later for a real
@@ -17,15 +17,21 @@ function TabIcon({ glyph, color }: { glyph: string; color: ColorValue }) {
 }
 
 export default function TabsLayout() {
+  // Was a static Colors import — meant the tab bar stayed pure white
+  // at the bottom of every screen even in dark mode, visible on all
+  // five tabs, all the time. Same bug class as emergency.tsx and
+  // chat[id].tsx: hardcoded palette that never re-renders on toggle.
+  const colors = useColors();
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textMuted,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {
-          backgroundColor: Colors.white,
-          borderTopColor: Colors.border,
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
         },
       }}
     >

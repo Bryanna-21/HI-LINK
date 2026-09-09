@@ -47,6 +47,18 @@ interface AuthState {
     confirmNewPassword: string
   ) => Promise<SimpleResult>;
   confirmPasswordChange: (code: string) => Promise<SimpleResult>;
+  // Pre-login flow — distinct from requestPasswordChange/confirmPasswordChange
+  // above, which require an authenticated session. Mirrors web's
+  // AuthContext.js forgotPassword/resetPassword exactly: two calls,
+  // email first to get a code, then email+code+both password fields
+  // together (backend re-checks the match server-side too).
+  forgotPassword: (email: string) => Promise<SimpleResult>;
+  resetPassword: (
+    email: string,
+    code: string,
+    newPassword: string,
+    confirmNewPassword: string
+  ) => Promise<SimpleResult>;
   logout: () => Promise<void>;
   hydrate: () => Promise<void>;
 }
@@ -189,6 +201,35 @@ export const useAuthStore = create<AuthState>((set) => ({
       return { success: true, message: res.data.message };
     } catch (err: any) {
       return { success: false, message: err?.response?.data?.message || 'Could not confirm the password change.' };
+    }
+  },
+
+  // Pre-login. Matches web's AuthContext.js forgotPassword exactly:
+  // POST /auth/forgot-password, { email } only.
+  forgotPassword: async (email) => {
+    try {
+      const res = await api.post('/auth/forgot-password', { email });
+      return { success: true, message: res.data.message };
+    } catch (err: any) {
+      return { success: false, message: err?.response?.data?.message || 'Could not process the request.' };
+    }
+  },
+
+  // Matches web's AuthContext.js resetPassword exactly: POST
+  // /auth/reset-password with all four fields, including
+  // confirmNewPassword — the backend re-validates the match itself
+  // rather than trusting the client-side check alone.
+  resetPassword: async (email, code, newPassword, confirmNewPassword) => {
+    try {
+      const res = await api.post('/auth/reset-password', {
+        email,
+        code,
+        newPassword,
+        confirmNewPassword,
+      });
+      return { success: true, message: res.data.message };
+    } catch (err: any) {
+      return { success: false, message: err?.response?.data?.message || 'Could not reset the password.' };
     }
   },
 

@@ -130,6 +130,12 @@ export default function LoginScreen() {
             {isLoading ? <ActivityIndicator color={colors.white} /> : <Text style={styles.buttonText}>Log In</Text>}
           </TouchableOpacity>
 
+          <Link href="/auth/forgot-password" asChild>
+            <TouchableOpacity style={styles.linkButton}>
+              <Text style={styles.linkText}>Forgot your password?</Text>
+            </TouchableOpacity>
+          </Link>
+
           <Link href="/auth/register" asChild>
             <TouchableOpacity style={styles.linkButton}>
               <Text style={styles.linkText}>

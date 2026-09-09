@@ -103,6 +103,11 @@ export default function ProfileScreen() {
         <DetailRow label="University ID" value={user?.universityId || 'Not set'} styles={styles} />
       </View>
 
+      <TouchableOpacity style={styles.linkRow} onPress={() => router.push('/profile/edit')}>
+        <Text style={styles.linkRowText}>Edit Profile</Text>
+        <Text style={styles.linkRowChevron}>›</Text>
+      </TouchableOpacity>
+
       <TouchableOpacity style={styles.linkRow} onPress={() => router.push('/profile/achievements')}>
         <Text style={styles.linkRowText}>Achievements & Portfolio</Text>
         <Text style={styles.linkRowChevron}>›</Text>

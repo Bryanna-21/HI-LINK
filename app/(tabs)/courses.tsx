@@ -32,10 +32,15 @@ export default function CoursesScreen() {
           fontSize: 24,
           fontWeight: '800',
           color: colors.text,
-          padding: Spacing.md,
-          paddingTop: Spacing.xl,
-          paddingBottom: 0,
         },
+        headerRow: {
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          paddingHorizontal: Spacing.md,
+          paddingTop: Spacing.xl,
+        },
+        examsLink: { fontSize: 13, fontWeight: '700', color: colors.primary },
         card: {
           backgroundColor: colors.surface,
           marginHorizontal: Spacing.md,
@@ -79,7 +84,12 @@ export default function CoursesScreen() {
       style={styles.container}
       refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => loadCourses(true)} />}
     >
-      <Text style={styles.title}>Courses</Text>
+      <View style={styles.headerRow}>
+        <Text style={styles.title}>Courses</Text>
+        <TouchableOpacity onPress={() => router.push('/exams' as any)}>
+          <Text style={styles.examsLink}>Exams</Text>
+        </TouchableOpacity>
+      </View>
       <StatusBanner status="real" note="Courses are fetched live from your account." />
 
       {isLoading ? (
