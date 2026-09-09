@@ -103,11 +103,12 @@ first (it's harder to forget to update) but fix this file too.
 
 | Item | Status | Notes |
 |---|---|---|
-| Dark mode, theme | ⛔ NOT BUILT | |
-| Notifications, Privacy, Security | ⛔ NOT BUILT | |
-| Downloads, Storage | ⛔ NOT BUILT | |
-| Language (10 languages) | ⛔ NOT BUILT | Needs an i18n library + real translations, not just a toggle. |
-| Accessibility (screen reader, large text, high contrast, reduced motion) | ⛔ NOT BUILT | |
+| Dark mode, theme | ✅ REAL | `useColors()` + `useMemo` pattern is applied across the app. Three real dark-mode bugs (tab bar, Emergency screen, an orphaned duplicate chat route) were found and fixed in a prior session — this doc previously said NOT BUILT, which was stale. |
+| In-app Notifications | ✅ REAL | New tonight. `app/notifications/index.tsx` — `GET/PATCH /notifications`, `PATCH /notifications/read-all`, matching web's `userNotificationService.js` exactly (the student/lecturer-facing system, not the separate admin-only `/api/admin/notifications` — confirmed by reading `AppRoutes.js`'s actual `RoleGuard` props, not by route name, since web has two similarly-named routes for two different role-gated systems). Wired into `home.tsx` as a bell icon with a real unread-count badge, deliberately fetched in its own independently-failing effect so a notifications hiccup can never block or error the main dashboard. Push notifications (OS-level alerts via `expo-notifications`) are a separate, genuinely unbuilt piece — this is the in-app feed only, same as web. |
+| Privacy, Security (settings toggles) | ⛔ NOT BUILT | Confirmed tonight: zero backend surface exists anywhere (checked `userService.js`, `authService.js`, and the full `src/services` directory on web) — this is backend work first, not a mobile task. Change-password is separately real (see Settings section of `app/settings/change-password.tsx`) and unrelated to this row. |
+| Downloads, Storage | ⛔ NOT BUILT | Confirmed tonight: even web's own "download" buttons (`Student/Notes.js`, `Student/Results.js`) are fake — `console.log`, no real file, no backend route. Nothing exists on either platform to port. |
+| Language (10 languages) | ⛔ NOT BUILT | Confirmed tonight: no i18n library in either platform's `package.json`. Needs a real library (e.g. i18next) + real translations for every screen, not a toggle. |
+| Accessibility (screen reader, large text, high contrast, reduced motion) | ⛔ NOT BUILT | React Native has real, built-in accessibility props (`accessibilityLabel`, `accessibilityRole`, etc.) — unlike the other rows here, this needs no backend at all. Highest-leverage remaining item in this section since it could start immediately. |
 
 ## AI
 
@@ -161,29 +162,33 @@ first (it's harder to forget to update) but fix this file too.
 
 Real, working, end to end: **Login, Register, Post feed, Emergency
 report, Profile view, Home greeting, Messaging (polling, not
-real-time), Exams (list/take/results), Forgot Password.** Everything
-else in this document is either a UI shell with no backend behind it,
-or not present in the app at all yet. Edit Profile is built but calls
-an endpoint (`/users/profile`) not present in the audited service
-layer — treat as unverified until confirmed against real backend
-routes.
+real-time), Exams (list/take/results), Forgot Password, In-app
+Notifications.** Everything else in this document is either a UI
+shell with no backend behind it, or not present in the app at all
+yet. Edit Profile is built but calls an endpoint (`/users/profile`)
+not present in the audited service layer — treat as unverified until
+confirmed against real backend routes.
 
-31 screens exist and are fully navigable — no dead links, every
-button goes somewhere (this count includes tonight's three new Exam
-screens and the Forgot Password / Edit Profile screens; verified each
-is actually linked from somewhere, since a screen with no navigation
-path in is functionally the same as not existing). Newly added since
-the last pass: AI Assistant (chat-shaped, no LLM connected), Event
-detail with local-only RSVP, CAT detail, Past Paper detail, Lost &
-Found. Course detail, Explore, and Events now link into their real
-sub-screens instead of showing inert cards.
+32 screens exist and are fully navigable — no dead links, every
+button goes somewhere (this count includes the Exam screens, Forgot
+Password, Edit Profile, and tonight's new Notifications screen;
+verified each is actually linked from somewhere, since a screen with
+no navigation path in is functionally the same as not existing).
+Newly added since the last pass: AI Assistant (chat-shaped, no LLM
+connected), Event detail with local-only RSVP, CAT detail, Past Paper
+detail, Lost & Found. Course detail, Explore, and Events now link
+into their real sub-screens instead of showing inert cards.
 
-Tonight's session also corrected a stale entry in this document
-(Messaging was marked SHELL when the code and in-app banner both say
-otherwise) and found/fixed three dark-mode bugs — the tab bar, the
-Emergency screen, and an orphaned duplicate chat route — none of
-which were previously documented here or caught by the screenshots
-that prompted this session.
+A prior session corrected a stale entry in this document (Messaging
+was marked SHELL when the code and in-app banner both say otherwise)
+and found/fixed three dark-mode bugs — the tab bar, the Emergency
+screen, and an orphaned duplicate chat route — none of which were
+previously documented here or caught by the screenshots that prompted
+that session. Tonight's session corrected a second stale entry (dark
+mode itself was still marked NOT BUILT despite being live app-wide)
+and added the in-app Notifications screen, whose real backend existed
+on web with zero mobile presence — the same shape of gap as last
+night's Exams find.
 
 This file should shrink the "SHELL" and "NOT BUILT" rows over time as
 real backend features ship — that is the actual next phase of this

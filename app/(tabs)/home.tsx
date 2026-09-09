@@ -57,6 +57,7 @@ export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [signingCourseId, setSigningCourseId] = useState<string | null>(null);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
 
   const styles = useMemo(
     () =>
@@ -72,6 +73,21 @@ export default function HomeScreen() {
         greeting: { fontSize: 22, fontWeight: '800', color: colors.text },
         role: { fontSize: 13, color: colors.textMuted, textTransform: 'capitalize', marginTop: 2 },
         logout: { color: colors.danger, fontWeight: '600', fontSize: 13 },
+        bellButton: { position: 'relative', padding: 4 },
+        bellIcon: { fontSize: 20 },
+        bellBadge: {
+          position: 'absolute',
+          top: -2,
+          right: -2,
+          backgroundColor: colors.danger,
+          borderRadius: 8,
+          minWidth: 16,
+          height: 16,
+          paddingHorizontal: 3,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        bellBadgeText: { color: colors.white, fontSize: 9, fontWeight: '800' },
         section: { marginTop: Spacing.lg },
         sectionTitle: {
           fontSize: 17,
@@ -195,6 +211,20 @@ export default function HomeScreen() {
     loadDashboard();
   }, [loadDashboard]);
 
+  // Deliberately separate from loadDashboard above: this is a
+  // nice-to-have badge count, not core dashboard data. Folding it into
+  // loadDashboard's try/catch would mean a slow or failing
+  // notifications endpoint could delay rendering the whole home screen
+  // or incorrectly surface the dashboard's own error banner. Fails
+  // silently — worst case the badge just doesn't show a number, which
+  // is a fine degrade for something this secondary.
+  useEffect(() => {
+    api
+      .get('/notifications')
+      .then((res) => setUnreadNotifCount(res.data?.unreadCount ?? 0))
+      .catch(() => {});
+  }, []);
+
   const handleSignAttendance = async (courseId: string, courseTitle: string) => {
     setSigningCourseId(courseId);
     try {
@@ -230,9 +260,19 @@ export default function HomeScreen() {
           <Text style={styles.greeting}>Hi, {user?.name?.split(' ')[0] || 'there'} 👋</Text>
           <Text style={styles.role}>{user?.role} {user?.universityId ? `· ${user.universityId}` : ''}</Text>
         </View>
-        <TouchableOpacity onPress={handleLogout}>
-          <Text style={styles.logout}>Log out</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.md }}>
+          <TouchableOpacity onPress={() => router.push('/notifications' as any)} style={styles.bellButton}>
+            <Text style={styles.bellIcon}>🔔</Text>
+            {unreadNotifCount > 0 ? (
+              <View style={styles.bellBadge}>
+                <Text style={styles.bellBadgeText}>{unreadNotifCount > 9 ? '9+' : unreadNotifCount}</Text>
+              </View>
+            ) : null}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleLogout}>
+            <Text style={styles.logout}>Log out</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <StatusBanner status="real" note="Greeting and role come from your real account." />
