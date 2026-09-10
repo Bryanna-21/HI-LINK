@@ -277,14 +277,23 @@ export default function CommunityScreen() {
     const first = media[0];
     const extraCount = media.length - 1;
     return (
-      <View style={styles.mediaWrap}>
+      <View
+        style={styles.mediaWrap}
+        accessibilityLabel={
+          first.type === 'video'
+            ? 'Video attachment'
+            : extraCount > 0
+              ? `Photo, plus ${extraCount} more attachment${extraCount > 1 ? 's' : ''}`
+              : 'Photo attachment'
+        }
+      >
         {first.type === 'video' ? (
           <InlineVideo uri={first.url} />
         ) : (
-          <Image source={{ uri: first.url }} style={styles.media} resizeMode="cover" />
+          <Image source={{ uri: first.url }} style={styles.media} resizeMode="cover" accessibilityElementsHidden importantForAccessibility="no" />
         )}
         {extraCount > 0 && (
-          <View style={styles.moreBadge}>
+          <View style={styles.moreBadge} accessibilityElementsHidden importantForAccessibility="no">
             <Text style={styles.moreBadgeText}>+{extraCount} more</Text>
           </View>
         )}
@@ -295,12 +304,22 @@ export default function CommunityScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Community</Text>
+        <Text style={styles.headerTitle} accessibilityRole="header">
+          Community
+        </Text>
         <View style={styles.headerActions}>
-          <TouchableOpacity onPress={() => router.push('/community-hub' as any)}>
+          <TouchableOpacity
+            onPress={() => router.push('/community-hub' as any)}
+            accessibilityRole="button"
+            accessibilityLabel="Community Hub"
+          >
             <Text style={styles.headerAction}>👥 Hub</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push('/messages')}>
+          <TouchableOpacity
+            onPress={() => router.push('/messages')}
+            accessibilityRole="button"
+            accessibilityLabel="Messages"
+          >
             <Text style={styles.headerAction}>💬 Messages</Text>
           </TouchableOpacity>
         </View>
@@ -316,20 +335,39 @@ export default function CommunityScreen() {
           value={newPost}
           onChangeText={setNewPost}
           multiline
+          accessibilityLabel="Write a post"
         />
 
         {pendingAssets.length > 0 && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pendingRow}>
             {pendingAssets.map((asset, index) => (
-              <View key={`${asset.uri}-${index}`} style={styles.pendingThumbWrap}>
+              <View
+                key={`${asset.uri}-${index}`}
+                style={styles.pendingThumbWrap}
+                accessibilityLabel={`Attachment ${index + 1}, ${asset.type}`}
+              >
                 {asset.type === 'video' ? (
-                  <View style={[styles.pendingThumb, styles.pendingVideoPlaceholder]}>
+                  <View
+                    style={[styles.pendingThumb, styles.pendingVideoPlaceholder]}
+                    accessibilityElementsHidden
+                    importantForAccessibility="no"
+                  >
                     <Text style={styles.pendingVideoIcon}>▶</Text>
                   </View>
                 ) : (
-                  <Image source={{ uri: asset.uri }} style={styles.pendingThumb} />
+                  <Image
+                    source={{ uri: asset.uri }}
+                    style={styles.pendingThumb}
+                    accessibilityElementsHidden
+                    importantForAccessibility="no"
+                  />
                 )}
-                <TouchableOpacity style={styles.removeThumbButton} onPress={() => handleRemovePendingAsset(index)}>
+                <TouchableOpacity
+                  style={styles.removeThumbButton}
+                  onPress={() => handleRemovePendingAsset(index)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove attachment ${index + 1}`}
+                >
                   <Text style={styles.removeThumbText}>✕</Text>
                 </TouchableOpacity>
               </View>
@@ -338,7 +376,14 @@ export default function CommunityScreen() {
         )}
 
         <View style={styles.composerFooter}>
-          <TouchableOpacity style={styles.attachButton} onPress={handlePickMedia} disabled={isPosting}>
+          <TouchableOpacity
+            style={styles.attachButton}
+            onPress={handlePickMedia}
+            disabled={isPosting}
+            accessibilityRole="button"
+            accessibilityLabel="Add photo or video"
+            accessibilityState={{ disabled: isPosting }}
+          >
             <Text style={styles.attachButtonText}>📎 Add photo/video</Text>
           </TouchableOpacity>
 
@@ -346,6 +391,9 @@ export default function CommunityScreen() {
             style={[styles.postButton, (!newPost.trim() || isPosting) && styles.postButtonDisabled]}
             onPress={handlePost}
             disabled={!newPost.trim() || isPosting}
+            accessibilityRole="button"
+            accessibilityLabel="Post"
+            accessibilityState={{ disabled: !newPost.trim() || isPosting, busy: isPosting }}
           >
             {isPosting ? <ActivityIndicator size="small" color={colors.white} /> : <Text style={styles.postButtonText}>Post</Text>}
           </TouchableOpacity>
@@ -362,16 +410,28 @@ export default function CommunityScreen() {
           keyExtractor={(item) => item._id}
           contentContainerStyle={{ padding: Spacing.md, gap: Spacing.sm }}
           refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}
-          ListEmptyComponent={<Text style={styles.emptyText}>No posts yet. Be the first to share something.</Text>}
+          ListEmptyComponent={
+            <Text style={styles.emptyText} accessibilityRole="text">
+              No posts yet. Be the first to share something.
+            </Text>
+          }
           renderItem={({ item }) => (
             <View style={styles.postCard}>
               <Text style={styles.postContent}>{item.content}</Text>
               {renderPostMedia(item.media)}
               <View style={styles.postFooter}>
-                <TouchableOpacity onPress={() => handleLike(item._id)}>
+                <TouchableOpacity
+                  onPress={() => handleLike(item._id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Like, ${item.likes} ${item.likes === 1 ? 'like' : 'likes'}`}
+                >
                   <Text style={styles.likeButton}>❤️ {item.likes}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => router.push(`/post/${item._id}` as any)}>
+                <TouchableOpacity
+                  onPress={() => router.push(`/post/${item._id}` as any)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${item.commentsCount} ${item.commentsCount === 1 ? 'comment' : 'comments'}, view post`}
+                >
                   <Text style={styles.commentCount}>💬 {item.commentsCount}</Text>
                 </TouchableOpacity>
               </View>

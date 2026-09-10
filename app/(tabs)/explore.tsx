@@ -48,13 +48,23 @@ export default function ExploreScreen() {
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.title}>Explore</Text>
+      <Text style={styles.title} accessibilityRole="header">
+        Explore
+      </Text>
       <StatusBanner status="real" note="Library, Marketplace, and Events are all live." />
 
       <View style={styles.grid}>
         {EXPLORE_ITEMS.map((item) => (
-          <TouchableOpacity key={item.key} style={styles.card} onPress={() => router.push(item.route as any)}>
-            <Text style={styles.cardIcon}>{item.icon}</Text>
+          <TouchableOpacity
+            key={item.key}
+            style={styles.card}
+            onPress={() => router.push(item.route as any)}
+            accessibilityRole="button"
+            accessibilityLabel={item.title}
+          >
+            <Text style={styles.cardIcon} accessibilityElementsHidden importantForAccessibility="no">
+              {item.icon}
+            </Text>
             <Text style={styles.cardTitle}>{item.title}</Text>
           </TouchableOpacity>
         ))}

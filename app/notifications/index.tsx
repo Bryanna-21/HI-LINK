@@ -163,9 +163,15 @@ export default function NotificationsScreen() {
       refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => loadNotifications(true)} />}
     >
       <View style={styles.header}>
-        <Text style={styles.title}>Notifications</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          Notifications
+        </Text>
         {unreadCount > 0 ? (
-          <TouchableOpacity onPress={handleMarkAllRead}>
+          <TouchableOpacity
+            onPress={handleMarkAllRead}
+            accessibilityRole="button"
+            accessibilityLabel="Mark all as read"
+          >
             <Text style={styles.markAllLink}>Mark all read</Text>
           </TouchableOpacity>
         ) : null}
@@ -189,10 +195,14 @@ export default function NotificationsScreen() {
             style={[styles.card, !n.read && styles.cardUnread]}
             onPress={() => handlePress(n)}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={`${n.read ? '' : 'Unread. '}${TYPE_LABEL[n.type] ?? n.type}: ${n.title}${n.message ? '. ' + n.message : ''}. ${formatDate(n.createdAt)}`}
           >
             <View style={styles.cardTop}>
               <Text style={styles.typeTag}>{TYPE_LABEL[n.type] ?? n.type}</Text>
-              {!n.read ? <View style={styles.unreadDot} /> : null}
+              {!n.read ? (
+                <View style={styles.unreadDot} accessibilityElementsHidden importantForAccessibility="no" />
+              ) : null}
             </View>
             <Text style={styles.notifTitle}>{n.title}</Text>
             {n.message ? <Text style={styles.notifMessage}>{n.message}</Text> : null}

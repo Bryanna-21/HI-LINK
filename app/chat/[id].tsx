@@ -139,11 +139,18 @@ export default function ChatDetailScreen() {
           data={messages}
           keyExtractor={(item) => item._id}
           contentContainerStyle={{ padding: Spacing.md, gap: Spacing.sm }}
-          ListEmptyComponent={<Text style={styles.emptyText}>No messages yet. Say hello.</Text>}
+          ListEmptyComponent={
+            <Text style={styles.emptyText} accessibilityRole="text">
+              No messages yet. Say hello.
+            </Text>
+          }
           renderItem={({ item }) => {
             const isMine = item.senderId === currentUserId;
             return (
-              <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleTheirs]}>
+              <View
+                style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleTheirs]}
+                accessibilityLabel={`${isMine ? 'You' : 'Them'}: ${item.text}`}
+              >
                 <Text style={[styles.bubbleText, isMine && styles.bubbleTextMine]}>{item.text}</Text>
               </View>
             );
@@ -159,11 +166,15 @@ export default function ChatDetailScreen() {
           value={draft}
           onChangeText={setDraft}
           multiline
+          accessibilityLabel="Message"
         />
         <TouchableOpacity
           style={[styles.sendButton, (!draft.trim() || isSending) && styles.sendButtonDisabled]}
           onPress={handleSend}
           disabled={!draft.trim() || isSending}
+          accessibilityRole="button"
+          accessibilityLabel="Send"
+          accessibilityState={{ disabled: !draft.trim() || isSending, busy: isSending }}
         >
           {isSending ? <ActivityIndicator size="small" color={colors.white} /> : <Text style={styles.sendButtonText}>Send</Text>}
         </TouchableOpacity>

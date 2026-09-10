@@ -20,9 +20,9 @@ import { useColors, Radius, Spacing } from '../../src/constants/theme';
 // is a plain report-submission form only.
 
 const EMERGENCY_TYPES = [
-  { value: 'medical', label: '🏥 Medical' },
-  { value: 'safety', label: '⚠️ Safety' },
-  { value: 'abuse', label: '🚫 Abuse' },
+  { value: 'medical', label: '🏥 Medical', a11yLabel: 'Medical' },
+  { value: 'safety', label: '⚠️ Safety', a11yLabel: 'Safety' },
+  { value: 'abuse', label: '🚫 Abuse', a11yLabel: 'Abuse' },
 ] as const;
 
 export default function EmergencyScreen() {
@@ -60,14 +60,19 @@ export default function EmergencyScreen() {
         note="Submits to the real backend. Live location & trusted contacts are not built yet."
       />
 
-      <Text style={styles.title}>Report an Emergency</Text>
+      <Text style={styles.title} accessibilityRole="header">
+        Report an Emergency
+      </Text>
 
-      <View style={styles.typeRow}>
+      <View style={styles.typeRow} accessibilityRole="radiogroup">
         {EMERGENCY_TYPES.map((t) => (
           <TouchableOpacity
             key={t.value}
             style={[styles.typeButton, type === t.value && styles.typeButtonActive]}
             onPress={() => setType(t.value)}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: type === t.value }}
+            accessibilityLabel={t.a11yLabel}
           >
             <Text
               style={[
@@ -89,12 +94,16 @@ export default function EmergencyScreen() {
         onChangeText={setMessage}
         multiline
         numberOfLines={4}
+        accessibilityLabel="Describe what's happening, optional"
       />
 
       <TouchableOpacity
         style={[styles.submitButton, (!type || isSubmitting) && styles.submitButtonDisabled]}
         onPress={handleSubmit}
         disabled={!type || isSubmitting}
+        accessibilityRole="button"
+        accessibilityLabel="Submit report"
+        accessibilityState={{ disabled: !type || isSubmitting, busy: isSubmitting }}
       >
         {isSubmitting ? (
           <ActivityIndicator color={colors.white} />

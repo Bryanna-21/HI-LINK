@@ -13,7 +13,7 @@ type DetailRowStyles = {
 
 function DetailRow({ label, value, styles }: { label: string; value: string; styles: DetailRowStyles }) {
   return (
-    <View style={styles.detailRow}>
+    <View style={styles.detailRow} accessible accessibilityLabel={`${label}: ${value}`}>
       <Text style={styles.detailLabel}>{label}</Text>
       <Text style={styles.detailValue}>{value}</Text>
     </View>
@@ -91,10 +91,12 @@ export default function ProfileScreen() {
       <StatusBanner status="real" note="Shows your actual account data only." />
 
       <View style={styles.card}>
-        <View style={styles.avatar}>
+        <View style={styles.avatar} accessibilityElementsHidden importantForAccessibility="no">
           <Text style={styles.avatarText}>{user?.name?.charAt(0)?.toUpperCase() || '?'}</Text>
         </View>
-        <Text style={styles.name}>{user?.name || 'Unknown'}</Text>
+        <Text style={styles.name} accessibilityRole="header">
+          {user?.name || 'Unknown'}
+        </Text>
         <Text style={styles.email}>{user?.email}</Text>
       </View>
 
@@ -103,19 +105,40 @@ export default function ProfileScreen() {
         <DetailRow label="University ID" value={user?.universityId || 'Not set'} styles={styles} />
       </View>
 
-      <TouchableOpacity style={styles.linkRow} onPress={() => router.push('/profile/edit')}>
+      <TouchableOpacity
+        style={styles.linkRow}
+        onPress={() => router.push('/profile/edit')}
+        accessibilityRole="link"
+        accessibilityLabel="Edit Profile"
+      >
         <Text style={styles.linkRowText}>Edit Profile</Text>
-        <Text style={styles.linkRowChevron}>›</Text>
+        <Text style={styles.linkRowChevron} accessibilityElementsHidden importantForAccessibility="no">
+          ›
+        </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.linkRow} onPress={() => router.push('/profile/achievements')}>
+      <TouchableOpacity
+        style={styles.linkRow}
+        onPress={() => router.push('/profile/achievements')}
+        accessibilityRole="link"
+        accessibilityLabel="Achievements and Portfolio"
+      >
         <Text style={styles.linkRowText}>Achievements & Portfolio</Text>
-        <Text style={styles.linkRowChevron}>›</Text>
+        <Text style={styles.linkRowChevron} accessibilityElementsHidden importantForAccessibility="no">
+          ›
+        </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.linkRow} onPress={() => router.push('/settings')}>
+      <TouchableOpacity
+        style={styles.linkRow}
+        onPress={() => router.push('/settings')}
+        accessibilityRole="link"
+        accessibilityLabel="Settings"
+      >
         <Text style={styles.linkRowText}>Settings</Text>
-        <Text style={styles.linkRowChevron}>›</Text>
+        <Text style={styles.linkRowChevron} accessibilityElementsHidden importantForAccessibility="no">
+          ›
+        </Text>
       </TouchableOpacity>
     </ScrollView>
   );
