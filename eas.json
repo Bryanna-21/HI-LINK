@@ -11,7 +11,8 @@
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://unilink-backend-1.onrender.com/api"
-      }
+      },
+      "channel": "preview"
     },
     "production": {
       "distribution": "internal",
@@ -20,7 +21,8 @@
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://unilink-backend-1.onrender.com/api"
-      }
+      },
+      "channel": "production"
     }
   }
 }
