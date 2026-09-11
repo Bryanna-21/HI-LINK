@@ -315,13 +315,6 @@ export default function CommunityScreen() {
           >
             <Text style={styles.headerAction}>👥 Hub</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => router.push('/messages')}
-            accessibilityRole="button"
-            accessibilityLabel="Messages"
-          >
-            <Text style={styles.headerAction}>💬 Messages</Text>
-          </TouchableOpacity>
         </View>
       </View>
 
