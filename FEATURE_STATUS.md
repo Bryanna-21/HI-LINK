@@ -77,10 +77,14 @@ first (it's harder to forget to update) but fix this file too.
 | Item | Status | Notes |
 |---|---|---|
 | Report submission (medical/safety/abuse) | ✅ REAL | Uses real EmergencyReport model. |
-| SOS button, live location | ⛔ NOT BUILT | Needs expo-location + a live-tracking backend design. |
-| Trusted contacts | ⛔ NOT BUILT | |
+| My Reports (report history) | ✅ REAL | New finding tonight. `GET /emergency/my-reports` is real and complete — mobile has no screen showing a student's own past reports at all right now. |
+| Lecturer/admin report review, acknowledge, respond, escalate, resolve | ✅ REAL (backend), ⛔ NOT BUILT (mobile) | Substantial real backend found tonight: role-scoped viewing (`GET /emergency/reports` — lecturers see only their own courses' reports plus university-wide reports with no course, restricted types like abuse hidden from lecturers entirely and visible only to admins), `PATCH /:id/acknowledge`, `/respond` (internal notes thread), `/escalate`, `/status` (admin-only resolve/dismiss). Every action, including denied attempts, is written to a real audit log. This is a full incident-management system with zero mobile presence — mobile only ever calls the student-facing submit endpoint. Out of scope for a quick add: this is lecturer/admin-role UI, the same category of work as the broader Lecturer role surface documented elsewhere in this file. |
+| Emergency contacts list | ✅ REAL (but static) | `GET /emergency/contacts` is real and returns real data, but the data itself is hardcoded in the controller (National Emergency, Ambulance, Campus Security with fixed numbers) — not database-backed, not editable without a code deploy. Accurate to call this "real" for mobile's purposes (a genuine list to display), but distinct from a true admin-editable contacts feature. |
+| Request Help ("I need help now" quick action) | 🚧 SHELL (backend, not mobile) | Genuinely different from the other rows here: `POST /emergency/help` exists and returns 200, but it is a true stub server-side — the handler does not persist anything, notify anyone, or create any record. Calling it currently does nothing beyond returning a canned success message. This is the one item in this section where the backend itself, not just mobile, needs real work. |
+| SOS button, live location | ⛔ NOT BUILT | Needs expo-location + a live-tracking backend design. Confirmed still absent on backend too — no route, no model field for it. |
+| Trusted contacts (user-managed, distinct from the static list above) | ⛔ NOT BUILT | Confirmed absent on backend. |
 | Campus security / hospital / police integration | ⛔ NOT BUILT | Real-world integration, not just code. |
-| Medical profile | ⛔ NOT BUILT | |
+| Medical profile | ⛔ NOT BUILT | Confirmed absent on backend — no fields on User or elsewhere. |
 
 ## Explore (Library / Marketplace / Events)
 
@@ -90,15 +94,18 @@ first (it's harder to forget to update) but fix this file too.
 | Marketplace (listings, jobs) | ✅ REAL | `GET /marketplace/listings` and `/marketplace/jobs` both real. **Previously said SHELL/"Needs Listing model" — stale.** Buyer/seller messaging is a separate, still-unverified concern — that would ride on the Messaging system, which genuinely is still shell (see below). |
 | Events (list) | ✅ REAL | `GET /api/events` on the real backend. **Previously said SHELL/"Needs Event model" — stale.** |
 | Events (RSVP, QR check-in) | 🚧 SHELL | List is real, but the event detail screen's RSVP only flips local state — nothing persists. QR check-in is a placeholder box, not a real generated/scannable code. This part of the doc's original claim still holds. |
+| Lost & Found | ✅ REAL | Confirmed tonight by reading `lostAndFound.controller.js` and `LostItem.js` directly — full CRUD (`GET/POST /`, `PATCH /:id/resolve`), image upload via Cloudinary, ownership check on resolve (only the original reporter can mark resolved). **Mobile's screen (`app/lost-and-found/index.tsx`) is still a `ShellScreen` claiming "Needs: LostItem model... Needs: POST route" — that claim is now confirmed false. This is a real, ready-to-wire backend with zero mobile screen calling it, same shape as the Achievements/Portfolio and Notifications gaps found earlier.** |
 
 ## Profile
 
 | Item | Status | Notes |
 |---|---|---|
 | Name, email, role, university ID | ✅ REAL | From the real User model. |
-| Achievements, Badges, Skills | 🚧 SHELL | No fields on User model for these. |
-| Certificates, Languages | 🚧 SHELL | Same. |
-| Portfolio, Resume, Volunteer hours, Projects | 🚧 SHELL | Same. |
+| Bio, phone, avatar, cover photo | ✅ REAL | New tonight, and now fully verified end-to-end rather than proposed: `User` model extended with `bio`, `phone`, `avatarUrl`, `coverUrl`. Real routes confirmed added to the already-mounted `/api/profile` router (there is no `/api/users` mount anywhere in this backend — mobile originally called the wrong prefix entirely, caught and fixed once the backend was actually available to check): `PUT /profile/me` (name/bio/phone), `PUT /profile/me/avatar`, `PUT /profile/me/cover` (Cloudinary uploads via the existing, already-proven `uploadImage` middleware and `uploadBufferToCloudinary` helper — no new upload infrastructure invented). `profile.tsx` now actually displays avatar, cover, and bio, all three previously either nonexistent or invisible (bio could be set but never shown anywhere). |
+| Achievements, Badges | ✅ REAL | **This doc previously said SHELL — "No fields on User model for these" — that was wrong, confirmed by reading the backend directly tonight.** Real `Achievement` model + `GET /profile/achievements` (also `GET /profile/achievements/:userId` for viewing someone else's). One genuine, confirmed gap: there is no route anywhere that CREATES an Achievement record — nothing awards them yet, by admin action or otherwise — so this list is correctly empty for every user until that separate piece is built. Mobile's `achievements.tsx` was rebuilt tonight to actually call this; it correctly only reads/displays, since there's nothing to award from the client side. |
+| Skills, Languages | ✅ REAL | Previously said SHELL, same as above — wrong. Real fields on the `Portfolio` model, editable via `PATCH /profile/portfolio`. Mobile's `achievements.tsx` rebuilt tonight with full add/remove UI for both. |
+| Portfolio (Projects), Volunteer hours | ✅ REAL | Same correction. Real fields on `Portfolio`, same `PATCH /profile/portfolio` endpoint. Rebuilt tonight with an add-project form and an editable hours field. |
+| Resume, Certificates (upload) | ✅ REAL | Same correction — `POST /profile/portfolio/resume` and `/certificates` are real, Cloudinary-backed, confirmed by reading the controller. Rebuilt tonight using `expo-document-picker` — **a brand-new native dependency as of tonight, not previously in this project**, meaning this specific piece cannot ship via OTA update alone and needs a fresh EAS build even though everything else in this same file change is pure JS. |
 
 ## Settings
 
@@ -139,6 +146,8 @@ first (it's harder to forget to update) but fix this file too.
 | Take exam | ✅ REAL | New tonight. `app/exams/[id]/take.tsx` — full state machine ported from web's `TakeExam.js`: countdown timer with auto-submit at zero, per-question navigation, MCQ/true-false/essay/short question types, submit confirmation dialog. Answer drafts persist to AsyncStorage (not SecureStore — these aren't credentials) so a crash mid-exam doesn't lose progress, same intent as web's localStorage draft-save. Deliberately NOT ported: web's fullscreen-on-request anti-cheat measure, since `requestFullscreen()` is a browser API with no native equivalent (a mobile app is already fullscreen). Added, with no web counterpart to match: a hardware back-button confirmation dialog, since accidentally backing out mid-timed-exam is a one-tap native accident that doesn't have a browser-back analog. |
 | Results | ✅ REAL | New tonight. `app/exams/results.tsx` calls `GET /exams/results/me`, matching `getStudentResults`. Deliberately NOT ported: web's "Download" and "Print Results" buttons — both are cosmetic on web itself (download only shows a toast with no real file; print calls `window.print()`, no native equivalent), so building fake versions here would be a regression, not parity. |
 | Lecturer exam creation/grading | ⛔ NOT BUILT | Web has a full 11-file Lecturer role surface (`Lecturer/CreateExam.js`, `GradeSubmissions.js`, etc., ~2,635 lines total) with no mobile equivalent at all. Out of scope for tonight's pass — this is its own dedicated build, not a quick add, and mobile currently has zero role-gated navigation pattern to build it on top of. |
+| Admin panel (backend) | ✅ REAL | Major correction tonight: this file and prior conversation had assumed essentially no backend work existed here. Confirmed false by reading `admin.controller.js` and `admin.routes.js` directly — real admin creation (bcrypt-hashed, audit-logged), user management, and more, all built on the existing `User` model with `role: "admin"` rather than a separate Admin collection. A `BACKEND-MISSING/` folder sitting in the repo root, containing an older draft of the same controller against a different, since-abandoned design (a separate `Admin` model, different file-naming convention), looked at first like evidence of unfinished work — it is not; it's superseded scaffolding from an earlier design pass, safely ignorable. |
+| Admin panel (mobile) | ⛔ NOT BUILT | The backend being real does not change this: mobile has zero admin-role screens, zero role-gated navigation, and building this properly means the same category of work as the Lecturer surface above — its own dedicated pass, not a quick add. |
 
 ## Auth (additions)
 
@@ -169,38 +178,65 @@ first (it's harder to forget to update) but fix this file too.
 ## Honest summary
 
 Real, working, end to end: **Login, Register, Post feed, Emergency
-report, Profile view, Home greeting, Messaging (polling, not
-real-time), Exams (list/take/results), Forgot Password, In-app
-Notifications.** Everything else in this document is either a UI
-shell with no backend behind it, or not present in the app at all
-yet. Edit Profile is built but calls an endpoint (`/users/profile`)
-not present in the audited service layer — treat as unverified until
-confirmed against real backend routes.
+report + report history, Profile view/edit (including avatar, cover,
+bio, phone), Achievements & Portfolio (skills, languages, projects,
+volunteer hours, resume, certificates), Home greeting, Messaging
+(three-type model with tabbed filtering, polling not real-time),
+Exams (list/take/results), Forgot Password, In-app Notifications,
+Lost & Found (backend real, mobile screen not yet wired), Library,
+Marketplace (including jobs), Emergency contacts (static list).**
+Everything else in this document is either a genuine UI shell, a
+genuine backend gap, or not present at all.
 
-32 screens exist and are fully navigable — no dead links, every
-button goes somewhere (this count includes the Exam screens, Forgot
-Password, Edit Profile, and tonight's new Notifications screen;
-verified each is actually linked from somewhere, since a screen with
-no navigation path in is functionally the same as not existing).
-Newly added since the last pass: AI Assistant (chat-shaped, no LLM
-connected), Event detail with local-only RSVP, CAT detail, Past Paper
-detail, Lost & Found. Course detail, Explore, and Events now link
-into their real sub-screens instead of showing inert cards.
+**Tonight (this session) had the UNILINK-BACKEND repo available for
+the first time.** Every prior "SHELL — needs a model" or "NOT BUILT"
+claim in this file was written from mobile or web absence alone, never
+checked against actual backend code — because nobody working on this
+project before tonight had that repo open at the same time as this
+one. That gap produced real, meaningful errors in both directions:
+Achievements/Portfolio, Lost & Found, and the admin panel were all
+marked unbuilt or absent while their backends were fully real and
+working; conversely, three brand-new endpoints (`/profile/me/avatar`,
+`/profile/me/cover`, plus mobile's original guess at `/users/profile`,
+which turned out to target a route prefix — `/api/users` — that has
+never existed in this backend at all) were built and shipped as
+"unverified" before this repo was available to check them against,
+and needed a real path correction once it was.
 
-A prior session corrected a stale entry in this document (Messaging
-was marked SHELL when the code and in-app banner both say otherwise)
-and found/fixed three dark-mode bugs — the tab bar, the Emergency
-screen, and an orphaned duplicate chat route — none of which were
-previously documented here or caught by the screenshots that prompted
-that session. Tonight's session corrected a second stale entry (dark
-mode itself was still marked NOT BUILT despite being live app-wide)
-and added the in-app Notifications screen, whose real backend existed
-on web with zero mobile presence — the same shape of gap as last
-night's Exams find.
+The single largest, highest-confidence takeaway from tonight: **this
+project has substantially more real backend than either the mobile or
+web frontend currently uses.** Achievements/Portfolio and Lost & Found
+were the two proven this session (both now wired into mobile). Not yet
+wired into anything, confirmed real and ready: the full lecturer/admin
+emergency-report review system (acknowledge/respond/escalate/resolve,
+role-scoped, fully audit-logged), and the admin panel backend broadly.
+Anywhere this file says a mobile or web screen is SHELL, the correct
+default assumption going forward is "check the backend before assuming
+it needs to be built from scratch" — that check has had a better than
+even hit rate tonight.
 
-This file should shrink the "SHELL" and "NOT BUILT" rows over time as
-real backend features ship — that is the actual next phase of this
-project, not a footnote. The single highest-leverage next step, based
-on tonight's audit, is the Lecturer role surface: web has a full
-~2,635-line, 11-screen implementation with zero mobile equivalent, and
-mobile currently has no role-gated navigation pattern to build it on.
+32+ screens exist and are fully navigable — no dead links, every
+button goes somewhere (verified each screen tonight added is actually
+linked from somewhere, not just present as a file, following the same
+discipline that caught two genuinely orphaned/unreachable screens in
+earlier sessions).
+
+Real, current priority order for what's next, in order of leverage
+rather than alphabetically:
+1. **Wire Lost & Found's mobile screen to its real, already-confirmed
+   backend** — smallest remaining gap of this exact shape, should be a
+   fast win using the same pattern as tonight's Achievements build.
+2. **A real backend fix for Emergency's "Request Help" stub** — the
+   one item found tonight where the backend itself, not mobile, is the
+   incomplete side.
+3. **Lecturer role surface** (web: ~2,635 lines, 11 files) and/or the
+   **admin panel mobile UI** — both are large, standalone builds, both
+   now confirmed to have complete, real backends waiting, and both
+   need mobile's first-ever role-gated navigation pattern before
+   either can start. Whichever is tackled first, that navigation
+   pattern is shared infrastructure for both.
+4. Accessibility pass on the ~34 screens not yet covered.
+5. Genuinely unbuilt on any backend, confirmed tonight: push
+   notifications, SOS/live location, trusted contacts (user-managed),
+   medical profile, OTP, biometric login, offline mode, certificate
+   pinning, user search/discovery, and real-time chat.

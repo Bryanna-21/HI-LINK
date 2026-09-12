@@ -20,23 +20,22 @@ import { useAuthStore } from '../../src/store/authStore';
 import { useColors, Radius, Spacing } from '../../src/constants/theme';
 import { api } from '../../src/api/client';
 
-// STATUS: UNVERIFIED ENDPOINTS — name/bio via PUT /users/profile is
-// the existing, already-flagged unverified port of web's
-// src/pages/EditProfile.js. Phone, avatar, and cover are new tonight
-// and have ZERO precedent anywhere in this codebase — not on web, not
-// in userService.js, not anywhere. There was nothing to port; these
-// endpoint shapes (PUT /users/profile/avatar, PUT /users/profile/cover,
-// phone folded into the existing PUT /users/profile body) are proposed
-// by mobile first, not confirmed against a real backend route. Built
-// to work the moment a matching backend exists, but do not assume any
-// of it is live until it's actually been hit and confirmed.
+// STATUS: REAL — verified directly against UNILINK-BACKEND. Real
+// routes are PUT /api/profile/me (name/bio/phone) and
+// PUT /api/profile/me/avatar, PUT /api/profile/me/cover (image
+// uploads) — NOT /api/users/profile/*, which this file called before
+// the backend repo was available to check against. There is no
+// /api/users mount anywhere in this backend; /api/profile was already
+// mounted for the portfolio/achievements routes, and these three were
+// added to that same router rather than inventing a new one. Kept as
+// PUT (not PATCH) to match what this file already sent, since the
+// backend route was written to match mobile rather than the reverse.
 //
 // The image upload mechanics (permission request, ImagePicker,
-// multipart FormData via a raw axios.post rather than the shared api
-// client, manual Bearer token attachment) are copied directly from
+// multipart FormData via a raw axios.put, not the shared api client,
+// manual Bearer token attachment) are copied directly from
 // (tabs)/community.tsx's post-media upload, which is real, tested,
-// and confirmed working on-device. Reusing a proven pattern rather
-// than designing a second one.
+// and confirmed working on-device.
 
 const AVATAR_UPLOAD_TIMEOUT_MS = 60000;
 
@@ -199,13 +198,13 @@ export default function EditProfileScreen() {
       let newCoverUrl: string | undefined;
 
       if (pendingAvatarUpload) {
-        newAvatarUrl = await uploadImage('/users/profile/avatar', 'avatar', pendingAvatarUpload);
+        newAvatarUrl = await uploadImage('/profile/me/avatar', 'avatar', pendingAvatarUpload);
       }
       if (pendingCoverUpload) {
-        newCoverUrl = await uploadImage('/users/profile/cover', 'cover', pendingCoverUpload);
+        newCoverUrl = await uploadImage('/profile/me/cover', 'cover', pendingCoverUpload);
       }
 
-      await api.put('/users/profile', { name, bio, phone });
+      await api.put('/profile/me', { name, bio, phone });
 
       setUser({
         ...(user as any),
@@ -222,7 +221,7 @@ export default function EditProfileScreen() {
     } catch (err: any) {
       setError(
         err?.response?.data?.message ||
-          'Could not update profile. One or more of these endpoints may not exist on the backend yet — see the note at the top of this file.'
+          'Could not update profile. Please try again.'
       );
     } finally {
       setLoading(false);
