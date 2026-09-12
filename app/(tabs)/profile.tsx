@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore } from '../../src/store/authStore';
 import { StatusBanner } from '../../src/components/StatusBanner';
@@ -28,7 +28,10 @@ export default function ProfileScreen() {
     () =>
       StyleSheet.create({
         container: { flex: 1, backgroundColor: colors.background },
-        card: { alignItems: 'center', paddingVertical: Spacing.xl },
+        card: { alignItems: 'center', paddingBottom: Spacing.xl },
+        coverWrap: { width: '100%', height: 120, backgroundColor: colors.surface },
+        coverImage: { width: '100%', height: '100%' },
+        avatarSection: { alignItems: 'center', marginTop: -40, paddingHorizontal: Spacing.lg },
         avatar: {
           width: 80,
           height: 80,
@@ -37,10 +40,14 @@ export default function ProfileScreen() {
           justifyContent: 'center',
           alignItems: 'center',
           marginBottom: Spacing.sm,
+          borderWidth: 3,
+          borderColor: colors.background,
         },
+        avatarImage: { width: '100%', height: '100%', borderRadius: Radius.full },
         avatarText: { fontSize: 32, color: colors.white, fontWeight: '800' },
         name: { fontSize: 20, fontWeight: '800', color: colors.text },
         email: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
+        bio: { fontSize: 14, color: colors.text, marginTop: Spacing.sm, textAlign: 'center', paddingHorizontal: Spacing.lg },
         detailsCard: {
           backgroundColor: colors.surface,
           marginHorizontal: Spacing.md,
@@ -91,18 +98,30 @@ export default function ProfileScreen() {
       <StatusBanner status="real" note="Shows your actual account data only." />
 
       <View style={styles.card}>
-        <View style={styles.avatar} accessibilityElementsHidden importantForAccessibility="no">
-          <Text style={styles.avatarText}>{user?.name?.charAt(0)?.toUpperCase() || '?'}</Text>
+        <View style={styles.coverWrap}>
+          {user?.coverUrl ? <Image source={{ uri: user.coverUrl }} style={styles.coverImage} resizeMode="cover" /> : null}
         </View>
-        <Text style={styles.name} accessibilityRole="header">
-          {user?.name || 'Unknown'}
-        </Text>
-        <Text style={styles.email}>{user?.email}</Text>
+
+        <View style={styles.avatarSection}>
+          <View style={styles.avatar} accessibilityElementsHidden importantForAccessibility="no">
+            {user?.avatarUrl ? (
+              <Image source={{ uri: user.avatarUrl }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarText}>{user?.name?.charAt(0)?.toUpperCase() || '?'}</Text>
+            )}
+          </View>
+          <Text style={styles.name} accessibilityRole="header">
+            {user?.name || 'Unknown'}
+          </Text>
+          <Text style={styles.email}>{user?.email}</Text>
+          {user?.bio ? <Text style={styles.bio}>{user.bio}</Text> : null}
+        </View>
       </View>
 
       <View style={styles.detailsCard}>
         <DetailRow label="Role" value={user?.role || '—'} styles={styles} />
         <DetailRow label="University ID" value={user?.universityId || 'Not set'} styles={styles} />
+        <DetailRow label="Phone" value={user?.phone || 'Not set'} styles={styles} />
       </View>
 
       <TouchableOpacity

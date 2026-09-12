@@ -9,33 +9,50 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Image,
+  Alert,
 } from 'react-native';
 import { router } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
+import * as SecureStore from 'expo-secure-store';
+import axios from 'axios';
 import { useAuthStore } from '../../src/store/authStore';
 import { useColors, Radius, Spacing } from '../../src/constants/theme';
 import { api } from '../../src/api/client';
 
-// STATUS: UNVERIFIED ENDPOINT — this is a direct, honest port of web's
-// src/pages/EditProfile.js, which calls PUT /users/profile with
-// { name, bio }. That endpoint does NOT appear in userService.js,
-// which is the audited, backend-confirmed service file (its own header
-// comment explains it was rewritten after a prior speculative-API
-// mismatch — see that file for the full story). /users/profile may or
-// may not actually exist on the backend right now.
+// STATUS: UNVERIFIED ENDPOINTS — name/bio via PUT /users/profile is
+// the existing, already-flagged unverified port of web's
+// src/pages/EditProfile.js. Phone, avatar, and cover are new tonight
+// and have ZERO precedent anywhere in this codebase — not on web, not
+// in userService.js, not anywhere. There was nothing to port; these
+// endpoint shapes (PUT /users/profile/avatar, PUT /users/profile/cover,
+// phone folded into the existing PUT /users/profile body) are proposed
+// by mobile first, not confirmed against a real backend route. Built
+// to work the moment a matching backend exists, but do not assume any
+// of it is live until it's actually been hit and confirmed.
 //
-// This screen is built to match web's UX exactly rather than invent a
-// different, unverifiable contract of its own — if /users/profile is
-// dead, it's dead on both platforms identically, which is genuine
-// parity even in failure. Confirm against the real backend routes
-// before relying on this in production, and delete this comment once
-// verified either way.
+// The image upload mechanics (permission request, ImagePicker,
+// multipart FormData via a raw axios.post rather than the shared api
+// client, manual Bearer token attachment) are copied directly from
+// (tabs)/community.tsx's post-media upload, which is real, tested,
+// and confirmed working on-device. Reusing a proven pattern rather
+// than designing a second one.
+
+const AVATAR_UPLOAD_TIMEOUT_MS = 60000;
 
 export default function EditProfileScreen() {
   const colors = useColors();
   const user = useAuthStore((s) => s.user);
+  const setUser = useAuthStore((s) => s.setUser);
 
   const [name, setName] = useState(user?.name ?? '');
-  const [bio, setBio] = useState('');
+  const [bio, setBio] = useState(user?.bio ?? '');
+  const [phone, setPhone] = useState(user?.phone ?? '');
+  const [avatarUri, setAvatarUri] = useState(user?.avatarUrl ?? null);
+  const [coverUri, setCoverUri] = useState(user?.coverUrl ?? null);
+  const [pendingAvatarUpload, setPendingAvatarUpload] = useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [pendingCoverUpload, setPendingCoverUpload] = useState<ImagePicker.ImagePickerAsset | null>(null);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -44,9 +61,50 @@ export default function EditProfileScreen() {
     () =>
       StyleSheet.create({
         container: { flex: 1, backgroundColor: colors.background },
-        content: { padding: Spacing.lg },
-        title: { fontSize: 24, fontWeight: '800', color: colors.text, marginBottom: Spacing.xs },
-        subtitle: { fontSize: 13, color: colors.textMuted, marginBottom: Spacing.lg },
+        content: { paddingBottom: Spacing.xl },
+        title: { fontSize: 24, fontWeight: '800', color: colors.text, paddingHorizontal: Spacing.lg, marginTop: Spacing.lg },
+        subtitle: { fontSize: 13, color: colors.textMuted, paddingHorizontal: Spacing.lg, marginBottom: Spacing.md },
+        coverWrap: { width: '100%', height: 140, backgroundColor: colors.surface },
+        coverImage: { width: '100%', height: '100%' },
+        coverEditButton: {
+          position: 'absolute',
+          bottom: Spacing.sm,
+          right: Spacing.sm,
+          backgroundColor: 'rgba(0,0,0,0.55)',
+          borderRadius: Radius.sm,
+          paddingHorizontal: Spacing.sm,
+          paddingVertical: 6,
+        },
+        coverEditText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+        avatarRow: { alignItems: 'center', marginTop: -40 },
+        avatarWrap: { position: 'relative' },
+        avatar: {
+          width: 88,
+          height: 88,
+          borderRadius: 44,
+          backgroundColor: colors.primary,
+          justifyContent: 'center',
+          alignItems: 'center',
+          borderWidth: 3,
+          borderColor: colors.background,
+        },
+        avatarImage: { width: '100%', height: '100%', borderRadius: 44 },
+        avatarInitial: { fontSize: 32, color: colors.white, fontWeight: '800' },
+        avatarEditBadge: {
+          position: 'absolute',
+          bottom: 0,
+          right: 0,
+          backgroundColor: colors.primary,
+          borderRadius: Radius.full,
+          width: 28,
+          height: 28,
+          justifyContent: 'center',
+          alignItems: 'center',
+          borderWidth: 2,
+          borderColor: colors.background,
+        },
+        avatarEditIcon: { fontSize: 13 },
+        form: { paddingHorizontal: Spacing.lg, marginTop: Spacing.lg },
         label: { fontSize: 13, fontWeight: '700', color: colors.text, marginBottom: Spacing.xs },
         input: {
           backgroundColor: colors.surface,
@@ -76,17 +134,95 @@ export default function EditProfileScreen() {
     [colors]
   );
 
+  const pickImage = async (aspect: [number, number]): Promise<ImagePicker.ImagePickerAsset | null> => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission required', 'Permission to access your photos is required.');
+      return null;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect,
+      quality: 0.7,
+    });
+    if (result.canceled || !result.assets?.length) return null;
+    return result.assets[0];
+  };
+
+  const handlePickAvatar = async () => {
+    const asset = await pickImage([1, 1]);
+    if (!asset) return;
+    setAvatarUri(asset.uri);
+    setPendingAvatarUpload(asset);
+  };
+
+  const handlePickCover = async () => {
+    const asset = await pickImage([16, 7]);
+    if (!asset) return;
+    setCoverUri(asset.uri);
+    setPendingCoverUpload(asset);
+  };
+
+  // Shared multipart upload helper — identical mechanics to
+  // community.tsx's proven pattern, parameterized by endpoint and
+  // field name rather than duplicated twice for avatar vs. cover.
+  const uploadImage = async (endpoint: string, fieldName: string, asset: ImagePicker.ImagePickerAsset) => {
+    const token = await SecureStore.getItemAsync('unilink_token');
+    const formData = new FormData();
+    formData.append(fieldName, {
+      uri: asset.uri,
+      name: asset.fileName || `${fieldName}-${Date.now()}.jpg`,
+      type: asset.mimeType || 'image/jpeg',
+    } as any);
+
+    const res = await axios.put(`${api.defaults.baseURL}${endpoint}`, formData, {
+      headers: {
+        Authorization: token ? `Bearer ${token}` : undefined,
+        'Content-Type': 'multipart/form-data',
+      },
+      timeout: AVATAR_UPLOAD_TIMEOUT_MS,
+    });
+    return res.data?.data?.url as string | undefined;
+  };
+
   const handleSubmit = async () => {
     setError('');
     setSuccessMessage('');
     setLoading(true);
     try {
-      await api.put('/users/profile', { name, bio });
+      // Images upload separately from the text fields, matching the
+      // proposed shape of three distinct endpoints rather than one
+      // giant multipart body — this also means a failed avatar upload
+      // doesn't block name/bio from saving, and vice versa.
+      let newAvatarUrl: string | undefined;
+      let newCoverUrl: string | undefined;
+
+      if (pendingAvatarUpload) {
+        newAvatarUrl = await uploadImage('/users/profile/avatar', 'avatar', pendingAvatarUpload);
+      }
+      if (pendingCoverUpload) {
+        newCoverUrl = await uploadImage('/users/profile/cover', 'cover', pendingCoverUpload);
+      }
+
+      await api.put('/users/profile', { name, bio, phone });
+
+      setUser({
+        ...(user as any),
+        name,
+        bio,
+        phone,
+        avatarUrl: newAvatarUrl ?? user?.avatarUrl,
+        coverUrl: newCoverUrl ?? user?.coverUrl,
+      });
+
+      setPendingAvatarUpload(null);
+      setPendingCoverUpload(null);
       setSuccessMessage('Profile updated.');
     } catch (err: any) {
       setError(
         err?.response?.data?.message ||
-          'Could not update profile. This endpoint may not exist on the backend yet — see the note at the top of this file.'
+          'Could not update profile. One or more of these endpoints may not exist on the backend yet — see the note at the top of this file.'
       );
     } finally {
       setLoading(false);
@@ -96,44 +232,99 @@ export default function EditProfileScreen() {
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Edit Profile</Text>
-        <Text style={styles.subtitle}>Update your display name and bio.</Text>
-
-        <Text style={styles.label}>Name</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Name"
-          placeholderTextColor={colors.textMuted}
-          value={name}
-          onChangeText={setName}
-          editable={!loading}
-        />
-
-        <Text style={styles.label}>Bio</Text>
-        <TextInput
-          style={[styles.input, styles.bioInput]}
-          placeholder="Bio"
-          placeholderTextColor={colors.textMuted}
-          value={bio}
-          onChangeText={setBio}
-          multiline
-          editable={!loading}
-        />
-
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-        {successMessage ? <Text style={styles.success}>{successMessage}</Text> : null}
-
         <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleSubmit}
-          disabled={loading}
+          style={styles.coverWrap}
+          onPress={handlePickCover}
+          accessibilityRole="button"
+          accessibilityLabel="Change cover photo"
         >
-          {loading ? <ActivityIndicator color={colors.white} /> : <Text style={styles.buttonText}>Save Profile</Text>}
+          {coverUri ? (
+            <Image source={{ uri: coverUri }} style={styles.coverImage} resizeMode="cover" />
+          ) : null}
+          <View style={styles.coverEditButton}>
+            <Text style={styles.coverEditText}>{coverUri ? 'Change cover' : 'Add cover photo'}</Text>
+          </View>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.cancelButton} onPress={() => router.back()}>
-          <Text style={styles.cancelText}>Cancel</Text>
-        </TouchableOpacity>
+        <View style={styles.avatarRow}>
+          <TouchableOpacity
+            style={styles.avatarWrap}
+            onPress={handlePickAvatar}
+            accessibilityRole="button"
+            accessibilityLabel="Change profile picture"
+          >
+            <View style={styles.avatar}>
+              {avatarUri ? (
+                <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+              ) : (
+                <Text style={styles.avatarInitial}>{name?.charAt(0)?.toUpperCase() || '?'}</Text>
+              )}
+            </View>
+            <View style={styles.avatarEditBadge} accessibilityElementsHidden importantForAccessibility="no">
+              <Text style={styles.avatarEditIcon}>✏️</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.title}>Edit Profile</Text>
+        <Text style={styles.subtitle}>Update your photo, name, phone, and bio.</Text>
+
+        <View style={styles.form}>
+          <Text style={styles.label}>Name</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Name"
+            placeholderTextColor={colors.textMuted}
+            value={name}
+            onChangeText={setName}
+            editable={!loading}
+          />
+
+          <Text style={styles.label}>Phone</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Phone number"
+            placeholderTextColor={colors.textMuted}
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+            editable={!loading}
+          />
+
+          <Text style={styles.label}>Bio</Text>
+          <TextInput
+            style={[styles.input, styles.bioInput]}
+            placeholder="Bio"
+            placeholderTextColor={colors.textMuted}
+            value={bio}
+            onChangeText={setBio}
+            multiline
+            editable={!loading}
+          />
+
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {successMessage ? <Text style={styles.success}>{successMessage}</Text> : null}
+
+          <TouchableOpacity
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={handleSubmit}
+            disabled={loading}
+            accessibilityRole="button"
+            accessibilityLabel="Save profile"
+            accessibilityState={{ disabled: loading, busy: loading }}
+          >
+            {loading ? <ActivityIndicator color={colors.white} /> : <Text style={styles.buttonText}>Save Profile</Text>}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="Cancel"
+          >
+            <Text style={styles.cancelText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );

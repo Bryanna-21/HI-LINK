@@ -10,6 +10,10 @@ export interface UniLinkUser {
   email: string;
   role: UserRole;
   universityId?: string;
+  bio?: string;
+  phone?: string;
+  avatarUrl?: string;
+  coverUrl?: string;
 }
 
 // Result shapes returned by login/register/verifyOtp/etc. Callers
@@ -29,6 +33,11 @@ interface AuthState {
   isWakingServer: boolean;
   isHydrated: boolean;
   error: string | null;
+
+  // Locally updates the cached user object without a network call —
+  // for merging in fields a mutation (like profile edit) just
+  // confirmed were saved, without needing a full re-fetch/re-login.
+  setUser: (user: UniLinkUser) => void;
 
   login: (email: string, password: string) => Promise<AuthActionResult>;
   register: (payload: {
@@ -78,6 +87,19 @@ export const useAuthStore = create<AuthState>((set) => ({
   isWakingServer: false,
   isHydrated: false,
   error: null,
+
+  // Same persistence approach as completeAuth above — must write to
+  // SecureStore, not just update in-memory Zustand state, or a
+  // profile edit would appear to succeed and then silently vanish
+  // the next time the app is fully closed and reopened (hydrate()
+  // reads unilink_user back from SecureStore on cold start).
+  setUser: (user) => {
+    SecureStore.setItemAsync('unilink_user', JSON.stringify(user)).catch(() => {
+      // Non-fatal: the in-memory update below still lands for the
+      // current session even if the disk write fails for some reason.
+    });
+    set({ user });
+  },
 
   // /auth/login has THREE possible outcomes, not one:
   //   1. 403 + requiresVerification - account exists but signup OTP was
