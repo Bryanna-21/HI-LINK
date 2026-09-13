@@ -37,6 +37,7 @@ interface Post {
   content: string;
   media?: PostMedia[];
   likes: number;
+  liked?: boolean;
   commentsCount: number;
   score: number;
   createdAt: string;
@@ -265,12 +266,44 @@ export default function CommunityScreen() {
     }
   };
 
+  // Real toggle now, matching the backend fix: previously this always
+  // incremented regardless of whether the post was already liked,
+  // mirroring the exact bug that existed server-side (blind increment,
+  // no per-user tracking, no way to unlike). The optimistic update
+  // below flips both `liked` and the count in the direction implied by
+  // the CURRENT state before the request, then reconciles with the
+  // server's actual response — using the response as truth rather
+  // than trusting the optimistic guess is what makes this safe even
+  // if two rapid taps race each other.
   const handleLike = async (postId: string) => {
-    setPosts((prev) => prev.map((p) => (p._id === postId ? { ...p, likes: p.likes + 1 } : p)));
+    const post = posts.find((p) => p._id === postId);
+    const wasLiked = post?.liked ?? false;
+
+    setPosts((prev) =>
+      prev.map((p) =>
+        p._id === postId
+          ? { ...p, liked: !wasLiked, likes: wasLiked ? Math.max(0, p.likes - 1) : p.likes + 1 }
+          : p
+      )
+    );
+
     try {
-      await api.post(`/posts/like/${postId}`);
+      const res = await api.post(`/posts/like/${postId}`);
+      const serverPost = res.data?.data?.post;
+      const serverLiked = res.data?.data?.liked;
+      if (serverPost) {
+        setPosts((prev) =>
+          prev.map((p) => (p._id === postId ? { ...p, likes: serverPost.likes, liked: serverLiked } : p))
+        );
+      }
     } catch {
-      loadFeed();
+      // Revert the optimistic update on failure rather than silently
+      // refetching the whole feed — this action is small enough that
+      // a targeted revert is cheap and doesn't lose scroll position
+      // the way loadFeed() would.
+      setPosts((prev) =>
+        prev.map((p) => (p._id === postId ? { ...p, liked: wasLiked, likes: post?.likes ?? p.likes } : p))
+      );
     }
   };
 
@@ -425,9 +458,10 @@ export default function CommunityScreen() {
                 <TouchableOpacity
                   onPress={() => handleLike(item._id)}
                   accessibilityRole="button"
-                  accessibilityLabel={`Like, ${item.likes} ${item.likes === 1 ? 'like' : 'likes'}`}
+                  accessibilityLabel={`${item.liked ? 'Unlike' : 'Like'}, ${item.likes} ${item.likes === 1 ? 'like' : 'likes'}`}
+                  accessibilityState={{ selected: !!item.liked }}
                 >
-                  <Text style={styles.likeButton}>❤️ {item.likes}</Text>
+                  <Text style={styles.likeButton}>{item.liked ? '❤️' : '🤍'} {item.likes}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => router.push(`/post/${item._id}` as any)}
