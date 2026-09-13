@@ -1,23 +1,32 @@
 import { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { ShellScreen } from '../../src/components/ShellScreen';
 import { StatusBanner } from '../../src/components/StatusBanner';
 import { useColors, Radius, Spacing } from '../../src/constants/theme';
 import { useThemeStore } from '../../src/store/themeStore';
+import { SUPPORTED_LANGUAGES, TRANSLATED_LANGUAGES, changeLanguage, LanguageCode } from '../../src/i18n';
 
-// STATUS: Appearance/Dark mode and "Change password" are now REAL —
-// everything else on this screen is still SHELL (i18n for languages,
-// expo-notifications for push prefs, dedicated settings routes for
-// privacy/security beyond password, offline downloads for storage,
-// accessibility props screen-by-screen). Those remain listed via
-// ShellScreen below, unchanged, each still stating exactly what it's
-// waiting on.
+// STATUS: Appearance/Dark mode, Change password, and — new tonight —
+// Language are all REAL now. Language is real infrastructure
+// (i18next + react-i18next + expo-localization, a new native
+// dependency requiring a fresh EAS build) with ENGLISH content only.
+// The other nine languages are wired into the language list and are
+// genuinely selectable and saved, but their translation files are
+// honest empty stubs — selecting one falls back to English per-key
+// via i18next's own fallbackLng mechanism, with a clear
+// "not yet translated" note shown rather than silently pretending
+// they're complete. Everything else on this screen (push
+// notifications, privacy/security beyond password, offline storage,
+// per-screen accessibility) remains SHELL, unchanged, each still
+// stating exactly what it's waiting on.
 
 export default function SettingsScreen() {
   const colors = useColors();
   const mode = useThemeStore((s) => s.mode);
   const toggle = useThemeStore((s) => s.toggle);
+  const { i18n } = useTranslation();
 
   const styles = useMemo(
     () =>
@@ -65,6 +74,23 @@ export default function SettingsScreen() {
           fontSize: 18,
           color: colors.textMuted,
         },
+        languageRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          backgroundColor: colors.surface,
+          marginHorizontal: Spacing.md,
+          marginTop: Spacing.xs,
+          padding: Spacing.md,
+          borderRadius: Radius.md,
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        languageRowActive: { borderColor: colors.primary },
+        languageLabel: { fontSize: 14, color: colors.text },
+        languageNativeLabel: { fontSize: 12, color: colors.textMuted, marginTop: 1 },
+        languageStub: { fontSize: 11, color: colors.textMuted, marginTop: 1, fontStyle: 'italic' },
+        checkmark: { fontSize: 16, color: colors.primary, fontWeight: '700' },
       }),
     [colors]
   );
@@ -98,6 +124,39 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Language</Text>
+        <StatusBanner
+          status="real"
+          note="Language selection is real and saved to your device. Only English is fully translated so far — other languages fall back to English until translated."
+        />
+        {SUPPORTED_LANGUAGES.map((lang) => {
+          const isActive = i18n.language === lang.code;
+          const isTranslated = TRANSLATED_LANGUAGES.includes(lang.code as LanguageCode);
+          return (
+            <TouchableOpacity
+              key={lang.code}
+              style={[styles.languageRow, isActive && styles.languageRowActive]}
+              onPress={() => changeLanguage(lang.code as LanguageCode)}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: isActive }}
+              accessibilityLabel={`${lang.label}${isTranslated ? '' : ', not yet translated'}`}
+            >
+              <View>
+                <Text style={styles.languageLabel}>{lang.label}</Text>
+                <Text style={styles.languageNativeLabel}>{lang.nativeLabel}</Text>
+                {!isTranslated ? <Text style={styles.languageStub}>Not yet translated — showing English</Text> : null}
+              </View>
+              {isActive ? (
+                <Text style={styles.checkmark} accessibilityElementsHidden importantForAccessibility="no">
+                  ✓
+                </Text>
+              ) : null}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
       <ShellScreen
         title=""
         sections={[
@@ -115,14 +174,6 @@ export default function SettingsScreen() {
             title: 'Storage',
             items: ['Downloads', 'Storage usage'],
             backendNote: 'Needs: offline download feature to exist first.',
-          },
-          {
-            title: 'Language',
-            items: [
-              'English', 'Swahili', 'French', 'Arabic', 'Spanish',
-              'German', 'Chinese', 'Japanese', 'Portuguese', 'Russian',
-            ],
-            backendNote: 'Needs: an i18n library (e.g. i18next) + real translated strings for every screen — this is a large, real effort, not a dropdown.',
           },
           {
             title: 'Accessibility',

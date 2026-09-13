@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator } from 'react-native';
@@ -6,6 +6,7 @@ import * as Updates from 'expo-updates';
 import { useAuthStore } from '../src/store/authStore';
 import { useThemeStore } from '../src/store/themeStore';
 import { useColors } from '../src/constants/theme';
+import { initI18n } from '../src/i18n';
 
 // STATUS: REAL — expo-updates was configured via `eas update:configure`
 // (see app.json's updates.url and runtimeVersion, and eas.json's
@@ -62,18 +63,22 @@ export default function RootLayout() {
   const isThemeHydrated = useThemeStore((s) => s.isHydrated);
   const themeMode = useThemeStore((s) => s.mode);
   const colors = useColors();
+  const [isI18nReady, setIsI18nReady] = useState(false);
 
   useEffect(() => {
     hydrateAuth();
     hydrateTheme();
+    initI18n().then(() => setIsI18nReady(true));
   }, []);
 
   useSilentUpdateCheck();
 
-  // Wait on both auth AND theme hydration before rendering real UI —
-  // otherwise the first frame could flash light-mode colors for
-  // someone who has dark mode saved, then jump to dark a moment later.
-  const isHydrated = isAuthHydrated && isThemeHydrated;
+  // Wait on auth, theme, AND i18n hydration before rendering real UI —
+  // same reasoning as the existing auth/theme gate: rendering before
+  // i18n resolves its saved/device language would show raw
+  // translation keys for a moment, the string equivalent of the
+  // light-mode color flash this gate already prevents.
+  const isHydrated = isAuthHydrated && isThemeHydrated && isI18nReady;
 
   if (!isHydrated) {
     return (

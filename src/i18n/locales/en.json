@@ -1,0 +1,73 @@
+{
+  "common": {
+    "cancel": "Cancel",
+    "save": "Save",
+    "back": "Back",
+    "continue": "Continue",
+    "loading": "Loading...",
+    "retry": "Retry",
+    "done": "Done",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "search": "Search",
+    "logOut": "Log out"
+  },
+  "auth": {
+    "login": {
+      "title": "UniLink",
+      "subtitle": "Connect · Learn · Grow",
+      "emailLabel": "Email",
+      "passwordLabel": "Password",
+      "submit": "Log In",
+      "forgotPassword": "Forgot your password?",
+      "noAccount": "Don't have an account?",
+      "signUp": "Sign up"
+    },
+    "register": {
+      "title": "Create Account",
+      "subtitle": "Join UniLink",
+      "nameLabel": "Full name",
+      "emailLabel": "Email",
+      "passwordLabel": "Password (min. 6 characters)",
+      "confirmPasswordLabel": "Confirm password",
+      "submit": "Sign Up",
+      "haveAccount": "Already have an account?",
+      "logIn": "Log in"
+    },
+    "verifyOtp": {
+      "title": "Verify Your Email",
+      "subtitle": "Enter the 6-digit code we sent to your email. If you don't see it, check your spam or junk folder.",
+      "submit": "Verify",
+      "resendPrompt": "Didn't get a code?",
+      "resend": "Resend code",
+      "resendCooldown": "Resend in {{seconds}}s"
+    }
+  },
+  "home": {
+    "greeting": "Hi, {{name}} 👋",
+    "todaysClasses": "Today's Classes",
+    "continueLearning": "Continue Learning",
+    "upcomingCat": "Upcoming CAT",
+    "attendance": "Attendance",
+    "quickActions": "Quick Actions",
+    "signIn": "Sign in",
+    "signing": "Signing…",
+    "signed": "Signed ✓",
+    "emergency": "Emergency",
+    "askAi": "Ask AI",
+    "lostAndFound": "Lost & Found"
+  },
+  "courses": {
+    "title": "Courses",
+    "exams": "Exams",
+    "noCourses": "No courses yet."
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "languageNotYetTranslated": "Not yet translated — showing English",
+    "getApp": "Get the App"
+  }
+}

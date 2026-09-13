@@ -138,9 +138,16 @@ export default function ChangePasswordScreen() {
   if (successMessage) {
     return (
       <View style={[styles.container, styles.content]}>
-        <Text style={styles.title}>Password Changed</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          Password Changed
+        </Text>
         <Text style={styles.success}>{successMessage}</Text>
-        <TouchableOpacity style={styles.button} onPress={() => router.back()}>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Done"
+        >
           <Text style={styles.buttonText}>Done</Text>
         </TouchableOpacity>
       </View>
@@ -152,7 +159,9 @@ export default function ChangePasswordScreen() {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {step === 'request' ? (
           <>
-            <Text style={styles.title}>Change Password</Text>
+            <Text style={styles.title} accessibilityRole="header">
+              Change Password
+            </Text>
             <Text style={styles.subtitle}>
               Enter your current password and the new one you'd like to use.
             </Text>
@@ -166,6 +175,7 @@ export default function ChangePasswordScreen() {
                 onChangeText={setCurrentPassword}
                 secureTextEntry
                 editable={!loading}
+                accessibilityLabel="Current password"
               />
               <TextInput
                 style={styles.input}
@@ -175,6 +185,7 @@ export default function ChangePasswordScreen() {
                 onChangeText={setNewPassword}
                 secureTextEntry
                 editable={!loading}
+                accessibilityLabel="New password, minimum 6 characters"
               />
               <TextInput
                 style={styles.input}
@@ -184,26 +195,41 @@ export default function ChangePasswordScreen() {
                 onChangeText={setConfirmNewPassword}
                 secureTextEntry
                 editable={!loading}
+                accessibilityLabel="Confirm new password"
               />
 
-              {error ? <Text style={styles.error}>{error}</Text> : null}
+              {error ? (
+                <Text style={styles.error} accessibilityLiveRegion="polite">
+                  {error}
+                </Text>
+              ) : null}
 
               <TouchableOpacity
                 style={[styles.button, loading && styles.buttonDisabled]}
                 onPress={handleRequest}
                 disabled={loading}
+                accessibilityRole="button"
+                accessibilityLabel="Continue"
+                accessibilityState={{ disabled: loading, busy: loading }}
               >
                 {loading ? <ActivityIndicator color={colors.white} /> : <Text style={styles.buttonText}>Continue</Text>}
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.linkButton} onPress={() => router.back()}>
+              <TouchableOpacity
+                style={styles.linkButton}
+                onPress={() => router.back()}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel"
+              >
                 <Text style={styles.linkText}>Cancel</Text>
               </TouchableOpacity>
             </View>
           </>
         ) : (
           <>
-            <Text style={styles.title}>Confirm It's You</Text>
+            <Text style={styles.title} accessibilityRole="header">
+              Confirm It's You
+            </Text>
             <Text style={styles.subtitle}>
               Enter the 6-digit code we sent to your email. If you don't see it, check your spam
               or junk folder.
@@ -219,19 +245,32 @@ export default function ChangePasswordScreen() {
                 keyboardType="number-pad"
                 maxLength={6}
                 editable={!loading}
+                accessibilityLabel="6-digit verification code"
               />
 
-              {error ? <Text style={styles.error}>{error}</Text> : null}
+              {error ? (
+                <Text style={styles.error} accessibilityLiveRegion="polite">
+                  {error}
+                </Text>
+              ) : null}
 
               <TouchableOpacity
                 style={[styles.button, loading && styles.buttonDisabled]}
                 onPress={handleConfirm}
                 disabled={loading}
+                accessibilityRole="button"
+                accessibilityLabel="Confirm"
+                accessibilityState={{ disabled: loading, busy: loading }}
               >
                 {loading ? <ActivityIndicator color={colors.white} /> : <Text style={styles.buttonText}>Confirm</Text>}
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.linkButton} onPress={() => setStep('request')}>
+              <TouchableOpacity
+                style={styles.linkButton}
+                onPress={() => setStep('request')}
+                accessibilityRole="button"
+                accessibilityLabel="Back"
+              >
                 <Text style={styles.linkText}>Back</Text>
               </TouchableOpacity>
             </View>

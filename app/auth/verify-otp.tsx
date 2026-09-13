@@ -129,7 +129,9 @@ export default function VerifyOtpScreen() {
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.content}>
-        <Text style={styles.title}>Verify Your Email</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          Verify Your Email
+        </Text>
         <Text style={styles.subtitle}>
           Enter the 6-digit code we sent to your email. If you don't see it, check your spam or
           junk folder.
@@ -146,19 +148,36 @@ export default function VerifyOtpScreen() {
             keyboardType="number-pad"
             maxLength={6}
             editable={!isLoading}
+            accessibilityLabel="6-digit verification code"
           />
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? (
+            <Text style={styles.error} accessibilityLiveRegion="polite">
+              {error}
+            </Text>
+          ) : null}
 
           <TouchableOpacity
             style={[styles.button, isLoading && styles.buttonDisabled]}
             onPress={handleSubmit}
             disabled={isLoading}
+            accessibilityRole="button"
+            accessibilityLabel="Verify"
+            accessibilityState={{ disabled: isLoading, busy: isLoading }}
           >
             {isLoading ? <ActivityIndicator color={colors.white} /> : <Text style={styles.buttonText}>Verify</Text>}
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.linkButton} onPress={handleResend} disabled={cooldown > 0 || resending}>
+          <TouchableOpacity
+            style={styles.linkButton}
+            onPress={handleResend}
+            disabled={cooldown > 0 || resending}
+            accessibilityRole="button"
+            accessibilityLabel={
+              resending ? 'Sending code' : cooldown > 0 ? `Resend available in ${cooldown} seconds` : 'Resend code'
+            }
+            accessibilityState={{ disabled: cooldown > 0 || resending, busy: resending }}
+          >
             <Text style={styles.linkText}>
               Didn't get a code?{' '}
               <Text style={cooldown > 0 ? styles.resendTextDisabled : styles.resendText}>
@@ -168,7 +187,7 @@ export default function VerifyOtpScreen() {
           </TouchableOpacity>
 
           <Link href="/auth/login" asChild>
-            <TouchableOpacity style={styles.linkButton}>
+            <TouchableOpacity style={styles.linkButton} accessibilityRole="link">
               <Text style={styles.linkText}>Back to login</Text>
             </TouchableOpacity>
           </Link>

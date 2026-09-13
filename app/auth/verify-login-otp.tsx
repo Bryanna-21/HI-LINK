@@ -107,7 +107,9 @@ export default function VerifyLoginOtpScreen() {
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.content}>
-        <Text style={styles.title}>Two-Factor Verification</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          Two-Factor Verification
+        </Text>
         <Text style={styles.subtitle}>
           Enter the 6-digit code we sent to your email to complete login. If you don't see it,
           check your spam or junk folder.
@@ -124,20 +126,28 @@ export default function VerifyLoginOtpScreen() {
             keyboardType="number-pad"
             maxLength={6}
             editable={!isLoading}
+            accessibilityLabel="6-digit verification code"
           />
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? (
+            <Text style={styles.error} accessibilityLiveRegion="polite">
+              {error}
+            </Text>
+          ) : null}
 
           <TouchableOpacity
             style={[styles.button, isLoading && styles.buttonDisabled]}
             onPress={handleSubmit}
             disabled={isLoading}
+            accessibilityRole="button"
+            accessibilityLabel="Verify"
+            accessibilityState={{ disabled: isLoading, busy: isLoading }}
           >
             {isLoading ? <ActivityIndicator color={colors.white} /> : <Text style={styles.buttonText}>Verify</Text>}
           </TouchableOpacity>
 
           <Link href="/auth/login" asChild>
-            <TouchableOpacity style={styles.linkButton}>
+            <TouchableOpacity style={styles.linkButton} accessibilityRole="link">
               <Text style={styles.linkText}>Back to login</Text>
             </TouchableOpacity>
           </Link>

@@ -5,6 +5,7 @@ import { useAuthStore } from '../../src/store/authStore';
 import { StatusBanner } from '../../src/components/StatusBanner';
 import { useColors, Radius, Spacing } from '../../src/constants/theme';
 import { api } from '../../src/api/client';
+import { cacheResponse, getCachedResponse, formatCacheAge } from '../../src/utils/offlineCache';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -58,6 +59,8 @@ export default function HomeScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [signingCourseId, setSigningCourseId] = useState<string | null>(null);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+  const [isShowingOfflineData, setIsShowingOfflineData] = useState(false);
+  const [offlineCacheAge, setOfflineCacheAge] = useState<string | null>(null);
 
   const styles = useMemo(
     () =>
@@ -88,6 +91,16 @@ export default function HomeScreen() {
           justifyContent: 'center',
         },
         bellBadgeText: { color: colors.white, fontSize: 9, fontWeight: '800' },
+        offlineBanner: {
+          backgroundColor: colors.background === '#0A0A0A' ? '#3A2E14' : '#FEF9E7',
+          marginHorizontal: Spacing.md,
+          marginTop: Spacing.sm,
+          padding: Spacing.sm,
+          borderRadius: Radius.sm,
+          borderWidth: 1,
+          borderColor: '#F59E0B',
+        },
+        offlineBannerText: { fontSize: 12, color: colors.text },
         section: { marginTop: Spacing.lg },
         sectionTitle: {
           fontSize: 17,
@@ -194,14 +207,50 @@ export default function HomeScreen() {
         })
       );
 
-      setNotes(perCourseResults.flatMap((r) => r.notes));
-      setCats(perCourseResults.flatMap((r) => r.cats));
-      setClassesToday(
-        perCourseResults.flatMap((r) => r.classesToday).sort((a, b) => a.startTime.localeCompare(b.startTime))
-      );
-      setAttendance(perCourseResults.map((r) => r.attendance));
+      const finalNotes = perCourseResults.flatMap((r) => r.notes);
+      const finalCats = perCourseResults.flatMap((r) => r.cats);
+      const finalClassesToday = perCourseResults
+        .flatMap((r) => r.classesToday)
+        .sort((a, b) => a.startTime.localeCompare(b.startTime));
+      const finalAttendance = perCourseResults.map((r) => r.attendance);
+
+      setNotes(finalNotes);
+      setCats(finalCats);
+      setClassesToday(finalClassesToday);
+      setAttendance(finalAttendance);
+      setIsShowingOfflineData(false);
+      setOfflineCacheAge(null);
+
+      // Cache the successful result so a future failed request (e.g.
+      // genuinely offline, not just a slow server) has real data to
+      // fall back to instead of an empty error screen.
+      cacheResponse(`home_dashboard_${user.id}`, {
+        notes: finalNotes,
+        cats: finalCats,
+        classesToday: finalClassesToday,
+        attendance: finalAttendance,
+      });
     } catch (err: any) {
-      setLoadError('Could not load your dashboard. Pull down to try again.');
+      // Real offline fallback, not a fake download button: if a cached
+      // dashboard exists for this user, show it with an honest "showing
+      // offline data from X ago" note rather than just an error banner.
+      const cached = await getCachedResponse<{
+        notes: CourseNote[];
+        cats: UpcomingCat[];
+        classesToday: ClassToday[];
+        attendance: AttendanceStatus[];
+      }>(`home_dashboard_${user.id}`);
+
+      if (cached) {
+        setNotes(cached.data.notes);
+        setCats(cached.data.cats);
+        setClassesToday(cached.data.classesToday);
+        setAttendance(cached.data.attendance);
+        setIsShowingOfflineData(true);
+        setOfflineCacheAge(formatCacheAge(cached.cachedAt));
+      } else {
+        setLoadError('Could not load your dashboard. Pull down to try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -287,6 +336,14 @@ export default function HomeScreen() {
       </View>
 
       <StatusBanner status="real" note="Greeting and role come from your real account." />
+
+      {isShowingOfflineData ? (
+        <View style={styles.offlineBanner} accessibilityLiveRegion="polite">
+          <Text style={styles.offlineBannerText}>
+            📡 Showing saved data from {offlineCacheAge} — pull down to try reconnecting.
+          </Text>
+        </View>
+      ) : null}
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle} accessibilityRole="header">

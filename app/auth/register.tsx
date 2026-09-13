@@ -95,7 +95,9 @@ export default function RegisterScreen() {
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Create Account</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          Create Account
+        </Text>
         <Text style={styles.subtitle}>Join UniLink</Text>
 
         <View style={styles.form}>
@@ -106,6 +108,7 @@ export default function RegisterScreen() {
             value={name}
             onChangeText={setName}
             editable={!isLoading}
+            accessibilityLabel="Full name"
           />
           <TextInput
             style={styles.input}
@@ -116,6 +119,7 @@ export default function RegisterScreen() {
             autoCapitalize="none"
             keyboardType="email-address"
             editable={!isLoading}
+            accessibilityLabel="Email"
           />
           <TextInput
             style={styles.input}
@@ -125,6 +129,7 @@ export default function RegisterScreen() {
             onChangeText={setPassword}
             secureTextEntry
             editable={!isLoading}
+            accessibilityLabel="Password, minimum 6 characters"
           />
           <TextInput
             style={styles.input}
@@ -134,20 +139,28 @@ export default function RegisterScreen() {
             onChangeText={setConfirmPassword}
             secureTextEntry
             editable={!isLoading}
+            accessibilityLabel="Confirm password"
           />
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? (
+            <Text style={styles.error} accessibilityLiveRegion="polite">
+              {error}
+            </Text>
+          ) : null}
 
           <TouchableOpacity
             style={[styles.button, isLoading && styles.buttonDisabled]}
             onPress={handleRegister}
             disabled={isLoading}
+            accessibilityRole="button"
+            accessibilityLabel="Sign up"
+            accessibilityState={{ disabled: isLoading, busy: isLoading }}
           >
             {isLoading ? <ActivityIndicator color={colors.white} /> : <Text style={styles.buttonText}>Sign Up</Text>}
           </TouchableOpacity>
 
           <Link href="/auth/login" asChild>
-            <TouchableOpacity style={styles.linkButton}>
+            <TouchableOpacity style={styles.linkButton} accessibilityRole="link">
               <Text style={styles.linkText}>
                 Already have an account? <Text style={styles.linkTextBold}>Log in</Text>
               </Text>

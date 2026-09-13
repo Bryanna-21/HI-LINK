@@ -140,11 +140,13 @@ export default function NewConversationScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         {step === 'student' ? (
-          <TouchableOpacity onPress={handleBack}>
+          <TouchableOpacity onPress={handleBack} accessibilityRole="button" accessibilityLabel="Back to Courses">
             <Text style={styles.backLink}>‹ Courses</Text>
           </TouchableOpacity>
         ) : (
-          <Text style={styles.title}>New Message</Text>
+          <Text style={styles.title} accessibilityRole="header">
+            New Message
+          </Text>
         )}
       </View>
 
@@ -162,9 +164,18 @@ export default function NewConversationScreen() {
           data={courses}
           keyExtractor={(item) => item._id}
           contentContainerStyle={{ padding: Spacing.md, gap: Spacing.sm }}
-          ListEmptyComponent={<Text style={styles.emptyText}>You're not enrolled in any courses yet.</Text>}
+          ListEmptyComponent={
+            <Text style={styles.emptyText} accessibilityRole="text">
+              You're not enrolled in any courses yet.
+            </Text>
+          }
           renderItem={({ item }) => (
-            <TouchableOpacity style={styles.row} onPress={() => handleSelectCourse(item)}>
+            <TouchableOpacity
+              style={styles.row}
+              onPress={() => handleSelectCourse(item)}
+              accessibilityRole="button"
+              accessibilityLabel={item.code ? `${item.title}, ${item.code}` : item.title}
+            >
               <Text style={styles.rowTitle}>{item.title}</Text>
               {item.code ? <Text style={styles.rowSubtitle}>{item.code}</Text> : null}
             </TouchableOpacity>
@@ -172,15 +183,28 @@ export default function NewConversationScreen() {
         />
       ) : (
         <>
-          <Text style={styles.sectionLabel}>{selectedCourse?.title}</Text>
+          <Text style={styles.sectionLabel} accessibilityRole="header">
+            {selectedCourse?.title}
+          </Text>
           <FlatList
             data={students}
             keyExtractor={(item) => item._id}
             contentContainerStyle={{ padding: Spacing.md, gap: Spacing.sm }}
-            ListEmptyComponent={<Text style={styles.emptyText}>No other students in this course yet.</Text>}
+            ListEmptyComponent={
+              <Text style={styles.emptyText} accessibilityRole="text">
+                No other students in this course yet.
+              </Text>
+            }
             renderItem={({ item }) => (
-              <TouchableOpacity style={styles.row} onPress={() => handleSelectStudent(item)} disabled={isStarting}>
-                <View style={styles.avatar}>
+              <TouchableOpacity
+                style={styles.row}
+                onPress={() => handleSelectStudent(item)}
+                disabled={isStarting}
+                accessibilityRole="button"
+                accessibilityLabel={`Message ${item.name}`}
+                accessibilityState={{ disabled: isStarting }}
+              >
+                <View style={styles.avatar} accessibilityElementsHidden importantForAccessibility="no">
                   <Text style={styles.avatarText}>{item.name.charAt(0).toUpperCase()}</Text>
                 </View>
                 <Text style={styles.rowTitle}>{item.name}</Text>
