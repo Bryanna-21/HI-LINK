@@ -33,6 +33,7 @@ interface PostMedia {
 interface Post {
   _id: string;
   userId: string;
+  authorName?: string;
   content: string;
   media?: PostMedia[];
   likes: number;
@@ -148,6 +149,7 @@ export default function CommunityScreen() {
           borderWidth: 1,
           borderColor: colors.border,
         },
+        postAuthor: { fontSize: 13, fontWeight: '700', color: colors.primary, marginBottom: 4 },
         postContent: { fontSize: 15, color: colors.text, lineHeight: 21 },
         mediaWrap: { marginTop: Spacing.sm, position: 'relative' },
         media: { width: '100%', height: 220, borderRadius: Radius.sm, backgroundColor: colors.border },
@@ -410,6 +412,13 @@ export default function CommunityScreen() {
           }
           renderItem={({ item }) => (
             <View style={styles.postCard}>
+              <TouchableOpacity
+                onPress={() => router.push(`/user/${item.userId}` as any)}
+                accessibilityRole="button"
+                accessibilityLabel={`View ${item.authorName || 'this user'}'s profile`}
+              >
+                <Text style={styles.postAuthor}>{item.authorName || 'Unknown user'}</Text>
+              </TouchableOpacity>
               <Text style={styles.postContent}>{item.content}</Text>
               {renderPostMedia(item.media)}
               <View style={styles.postFooter}>

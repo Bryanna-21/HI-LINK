@@ -10,22 +10,28 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, router } from 'expo-router';
 import { StatusBanner } from '../../src/components/StatusBanner';
 import { useColors, Radius, Spacing } from '../../src/constants/theme';
 import { api } from '../../src/api/client';
 import { useAuthStore } from '../../src/store/authStore';
 
 // STATUS: REAL — calls GET/POST /api/posts/:postId/comments on the
-// live backend. Comment model has no populated user name (userId is a
-// raw string, no .populate() on the backend route) — so comments only
-// show "You" for the current user's own comments, and a generic label
-// otherwise, rather than fabricating a name that isn't there.
+// live backend. Previously the backend's Comment model had no
+// populated user name, so this screen only ever showed "You" or a
+// generic "Student" label. Fixed tonight on the backend side:
+// getComments now attaches a real authorName via the same
+// manual-join pattern post.controller.js already used for post
+// authors (Comment stores userId as a plain string, not a Mongoose
+// ref, so it's a batch User lookup, not .populate()). This screen is
+// updated to actually display that real name instead of the old
+// generic fallback.
 
 interface Comment {
   _id: string;
   postId: string;
   userId: string;
+  authorName?: string;
   content: string;
   createdAt: string;
 }
@@ -156,7 +162,15 @@ export default function PostCommentsScreen() {
           ListEmptyComponent={<Text style={styles.emptyText}>No comments yet.</Text>}
           renderItem={({ item }) => (
             <View style={styles.commentCard}>
-              <Text style={styles.commentAuthor}>{item.userId === currentUser?.id ? 'You' : 'Student'}</Text>
+              <TouchableOpacity
+                onPress={() => router.push(`/user/${item.userId}` as any)}
+                accessibilityRole="button"
+                accessibilityLabel={`View ${item.userId === currentUser?.id ? 'your' : (item.authorName || 'this user') + "'s"} profile`}
+              >
+                <Text style={styles.commentAuthor}>
+                  {item.userId === currentUser?.id ? 'You' : item.authorName || 'Unknown user'}
+                </Text>
+              </TouchableOpacity>
               <Text style={styles.commentText}>{item.content}</Text>
             </View>
           )}

@@ -59,8 +59,10 @@ first (it's harder to forget to update) but fix this file too.
 | Polls, Questions | ✅ REAL | `app/polls/` — real voting with a live percentage bar per option. The backend response has no explicit "did I vote" flag; this screen derives it by scanning each option's `voterIds` for the current user. Create form included. |
 | Research | ⛔ NOT BUILT | Not represented in the Hub screen — unclear if this means research papers (see Library) or a separate concept; needs clarification before building. No backend model for this specifically either. |
 | Announcements | ✅ REAL | `app/announcements/` — list is visible to everyone; the create button is shown only to lecturer/admin accounts client-side, mirroring the backend's own `isStaff` gate (which is the real enforcement — the client-side hide is just to avoid showing an action that would 403). |
-| Discussion (per-course) | ✅ REAL | `app/discussion/[id].tsx` now posts to and reads from `GET/POST /courses/:courseId/discussion`. Like Comments, the backend returns a raw `userId` string with no populated name, so entries show "You" or a generic label. |
-| Comments on posts | ✅ REAL | `app/post/[id].tsx` now posts to and reads from `GET/POST /posts/:postId/comments`. Same "no populated name" caveat as Discussion. |
+| Discussion (per-course) | ✅ REAL | `app/discussion/[id].tsx` now posts to and reads from `GET/POST /courses/:courseId/discussion`. Like Comments used to, the backend returns a raw `userId` string with no populated name, so entries still show "You" or a generic label. **Not fixed tonight** — Comments got the author-name fix (see below) because that's what was asked for; Discussion has the exact same fixable gap and is a natural next candidate for the identical treatment. |
+| Comments on posts | ✅ REAL, with real author names | `app/post/[id].tsx` posts to and reads from `GET/POST /posts/:postId/comments`. Backend fixed tonight: the `Comment` model existed already but had zero routes at all before this session — `getComments`/`addComment` are new, reusing `post.controller.js`'s existing manual-join pattern (`attachAuthorNames`) to attach a real name per comment. This doc previously noted comments only showed "You" or a generic label — that's now fixed; comment authors show their real name and are tappable through to their profile (see Following/Public Profile below). |
+| Following / Followers | ✅ REAL, new tonight | Zero precedent anywhere before this session — no `Follow` model, no routes, nothing. Built as the real Instagram public-account model (confirmed this is what was wanted, not a request/approve system): one-directional, instant, no approval step. New `Follow` model (compound unique index on `{followerId, followingId}` prevents duplicates), new `/api/follow` router: `POST/DELETE /follow/:userId`, `GET /follow/:userId/followers`, `GET /follow/:userId/following`, `GET /follow/:userId/status`. Wired into the new public profile screen (below) as a Follow/Following toggle button. Not built: any notification when someone follows you, and no followers/following COUNT shown anywhere yet (would need a second round trip; wasn't asked for). |
+| Public profile view (tap a name to see someone's profile) | ✅ REAL, new tonight | New screen, `app/user/[id].tsx` — did not exist in any form before; there was previously no way to view anyone's profile but your own. Shows name, role, bio, avatar (`GET /profile/summary/:userId`, expanded tonight from name/role only to include avatarUrl and bio — same public exposure tier as what's already visible on every post, not a new privacy surface), achievements (`GET /profile/achievements/:userId`, already existed, simply never had a mobile caller), and the Follow/Following button described above. Reachable by tapping a post author's name or a comment author's name, both wired tonight. **Honest limitation, not a bug:** the "Message" button on this screen opens the existing course-scoped `messages/new.tsx` flow, not a direct conversation with that specific person — there is no backend endpoint to start a conversation by userId alone, and building one wasn't in tonight's scope. Flagged clearly in-code rather than silently shipped as if it were fully wired. |
 
 ## Messaging
 
@@ -177,16 +179,32 @@ first (it's harder to forget to update) but fix this file too.
 
 ## Honest summary
 
-Real, working, end to end: **Login, Register, Post feed, Emergency
-report + report history, Profile view/edit (including avatar, cover,
-bio, phone), Achievements & Portfolio (skills, languages, projects,
-volunteer hours, resume, certificates), Home greeting, Messaging
-(three-type model with tabbed filtering, polling not real-time),
-Exams (list/take/results), Forgot Password, In-app Notifications,
-Lost & Found (backend real, mobile screen not yet wired), Library,
-Marketplace (including jobs), Emergency contacts (static list).**
-Everything else in this document is either a genuine UI shell, a
-genuine backend gap, or not present at all.
+Real, working, end to end: **Login, Register, Post feed with real
+comments (author names now real, not generic labels) and a public
+profile view reachable by tapping any author's name, Following/
+Followers (real Instagram-style one-directional follow, new tonight),
+Emergency report + report history, Profile view/edit (including
+avatar, cover, bio, phone), Achievements & Portfolio (skills,
+languages, projects, volunteer hours, resume, certificates), Home
+greeting, Messaging (three-type model with tabbed filtering, polling
+not real-time), Exams (list/take/results), Forgot Password, In-app
+Notifications, Lost & Found (backend real, mobile screen not yet
+wired), Library, Marketplace (including jobs), Emergency contacts
+(static list).** Everything else in this document is either a
+genuine UI shell, a genuine backend gap, or not present at all.
+
+This batch (Comments backend, Following/Followers from scratch,
+public profile screen) was built in one continuous pass at the
+person's explicit request despite a genuine size mismatch between the
+pieces — Comments needed only new routes against an existing model,
+Following needed an entirely new schema designed from a design
+conversation first. Each piece was still verified individually
+(`node --check` on every backend file, brace/paren balance and
+import-resolution checks on every mobile file) rather than assumed
+correct by association with the rest of the batch, learning directly
+from earlier the same night, where a similarly bundled batch shipped
+with one real bug (a used-but-never-installed npm package) that only
+surfaced at build time.
 
 **Tonight (this session) had the UNILINK-BACKEND repo available for
 the first time.** Every prior "SHELL — needs a model" or "NOT BUILT"
