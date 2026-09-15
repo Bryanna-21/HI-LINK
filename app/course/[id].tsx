@@ -199,7 +199,9 @@ export default function CourseDetailScreen() {
         note={courseTitle ? `${courseTitle} — live course data.` : `Loading course "${id}"…`}
       />
 
-      <Text style={styles.sectionHeader}>Timetable</Text>
+      <Text style={styles.sectionHeader} accessibilityRole="header">
+        Timetable
+      </Text>
       <StatusBanner status="real" note="Lecturers add entries here; students see them on Home." />
       {isLoading ? (
         <ActivityIndicator style={{ marginTop: Spacing.sm }} color={colors.primary} />
@@ -209,7 +211,12 @@ export default function CourseDetailScreen() {
         </View>
       ) : (
         timetable.map((entry) => (
-          <View key={entry._id} style={styles.card}>
+          <View
+            key={entry._id}
+            style={styles.card}
+            accessible
+            accessibilityLabel={`${entry.dayOfWeek}, ${entry.startTime} to ${entry.endTime}${entry.location ? ', ' + entry.location : ''}`}
+          >
             <Text style={styles.itemText}>
               {entry.dayOfWeek} · {entry.startTime}–{entry.endTime}
             </Text>
@@ -222,13 +229,18 @@ export default function CourseDetailScreen() {
         <>
           {showForm ? (
             <View style={styles.formCard}>
-              <Text style={styles.formLabel}>Day</Text>
-              <View style={styles.dayRow}>
+              <Text style={styles.formLabel} accessibilityRole="header">
+                Day
+              </Text>
+              <View style={styles.dayRow} accessibilityRole="radiogroup">
                 {DAYS.map((d) => (
                   <TouchableOpacity
                     key={d}
                     style={[styles.dayChip, dayOfWeek === d && styles.dayChipActive]}
                     onPress={() => setDayOfWeek(d)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: dayOfWeek === d }}
+                    accessibilityLabel={d}
                   >
                     <Text style={[styles.dayChipText, dayOfWeek === d && styles.dayChipTextActive]}>
                       {d.slice(0, 3)}
@@ -244,6 +256,7 @@ export default function CourseDetailScreen() {
                 onChangeText={setStartTime}
                 placeholder="07:00"
                 placeholderTextColor={colors.textMuted}
+                accessibilityLabel="Start time, 24 hour format, example 07:00"
               />
 
               <Text style={styles.formLabel}>End time</Text>
@@ -253,6 +266,7 @@ export default function CourseDetailScreen() {
                 onChangeText={setEndTime}
                 placeholder="09:00"
                 placeholderTextColor={colors.textMuted}
+                accessibilityLabel="End time"
               />
 
               <Text style={styles.formLabel}>Location (optional)</Text>
@@ -262,38 +276,68 @@ export default function CourseDetailScreen() {
                 onChangeText={setLocation}
                 placeholder="Room 12, Block B"
                 placeholderTextColor={colors.textMuted}
+                accessibilityLabel="Location, optional"
               />
 
               <View style={styles.formActions}>
-                <TouchableOpacity style={styles.cancelButton} onPress={() => setShowForm(false)}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => setShowForm(false)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancel"
+                >
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.saveButton} disabled={isSaving} onPress={handleAddEntry}>
+                <TouchableOpacity
+                  style={styles.saveButton}
+                  disabled={isSaving}
+                  onPress={handleAddEntry}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add entry"
+                  accessibilityState={{ disabled: isSaving, busy: isSaving }}
+                >
                   <Text style={styles.saveButtonText}>{isSaving ? 'Saving…' : 'Add entry'}</Text>
                 </TouchableOpacity>
               </View>
             </View>
           ) : (
-            <TouchableOpacity style={styles.addButton} onPress={() => setShowForm(true)}>
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={() => setShowForm(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Add class to timetable"
+            >
               <Text style={styles.addButtonText}>+ Add class to timetable</Text>
             </TouchableOpacity>
           )}
         </>
       )}
 
-      <Text style={styles.sectionHeader}>Units</Text>
-      <View style={styles.card}>
+      <Text style={styles.sectionHeader} accessibilityRole="header">
+        Units
+      </Text>
+      <View style={styles.card} accessibilityLabel="Unit 1, not yet available" accessibilityState={{ disabled: true }}>
         <Text style={styles.itemText}>Unit 1 — placeholder</Text>
       </View>
-      <View style={styles.card}>
+      <View style={styles.card} accessibilityLabel="Unit 2, not yet available" accessibilityState={{ disabled: true }}>
         <Text style={styles.itemText}>Unit 2 — placeholder</Text>
       </View>
 
-      <Text style={styles.sectionHeader}>Course Tools</Text>
+      <Text style={styles.sectionHeader} accessibilityRole="header">
+        Course Tools
+      </Text>
       {sections.map((s) => (
-        <TouchableOpacity key={s.key} style={styles.linkCard} onPress={() => router.push(s.route as any)}>
+        <TouchableOpacity
+          key={s.key}
+          style={styles.linkCard}
+          onPress={() => router.push(s.route as any)}
+          accessibilityRole="button"
+          accessibilityLabel={s.title}
+        >
           <Text style={styles.linkCardTitle}>{s.title}</Text>
-          <Text style={styles.linkCardChevron}>›</Text>
+          <Text style={styles.linkCardChevron} accessibilityElementsHidden importantForAccessibility="no">
+            ›
+          </Text>
         </TouchableOpacity>
       ))}
     </ScrollView>

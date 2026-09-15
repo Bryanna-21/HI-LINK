@@ -111,7 +111,9 @@ export default function MarketplaceScreen() {
       refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => load(true)} />}
     >
       <View style={styles.header}>
-        <Text style={styles.title}>Marketplace</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          Marketplace
+        </Text>
       </View>
       <StatusBanner status="real" note="Listings and jobs are live from your account." />
 
@@ -121,14 +123,21 @@ export default function MarketplaceScreen() {
         </View>
       ) : (
         <>
-          <Text style={styles.sectionTitle}>Listings</Text>
+          <Text style={styles.sectionTitle} accessibilityRole="header">
+            Listings
+          </Text>
           {listings.length === 0 ? (
             <View style={styles.card}>
               <Text style={styles.cardMuted}>No listings yet.</Text>
             </View>
           ) : (
             listings.map((item) => (
-              <View key={item._id} style={styles.card}>
+              <View
+                key={item._id}
+                style={styles.card}
+                accessible
+                accessibilityLabel={`${item.title}${item.category ? ', ' + item.category : ''}${typeof item.price === 'number' ? ', KSh ' + item.price.toLocaleString() : ''}${item.sold ? ', sold' : ''}`}
+              >
                 <Text style={styles.cardTitle}>{item.title}</Text>
                 <View style={styles.rowBetween}>
                   {item.category ? <Text style={styles.cardMuted}>{item.category}</Text> : <View />}
@@ -141,14 +150,21 @@ export default function MarketplaceScreen() {
             ))
           )}
 
-          <Text style={styles.sectionTitle}>Jobs & internships</Text>
+          <Text style={styles.sectionTitle} accessibilityRole="header">
+            Jobs & internships
+          </Text>
           {jobs.length === 0 ? (
             <View style={styles.card}>
               <Text style={styles.cardMuted}>No job listings yet.</Text>
             </View>
           ) : (
             jobs.map((job) => (
-              <View key={job._id} style={styles.card}>
+              <View
+                key={job._id}
+                style={styles.card}
+                accessible
+                accessibilityLabel={`${job.title}${job.company ? ', ' + job.company : ''}`}
+              >
                 <Text style={styles.cardTitle}>{job.title}</Text>
                 {job.company ? <Text style={styles.cardMuted}>{job.company}</Text> : null}
               </View>

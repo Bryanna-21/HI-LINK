@@ -163,8 +163,15 @@ export default function ClubsScreen() {
       <StatusBanner status="real" note="Clubs are saved to the real backend." />
 
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Clubs</Text>
-        <TouchableOpacity style={styles.createButton} onPress={() => setCreateOpen(true)}>
+        <Text style={styles.title} accessibilityRole="header">
+          Clubs
+        </Text>
+        <TouchableOpacity
+          style={styles.createButton}
+          onPress={() => setCreateOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel="New club"
+        >
           <Text style={styles.createButtonText}>+ New Club</Text>
         </TouchableOpacity>
       </View>
@@ -178,7 +185,7 @@ export default function ClubsScreen() {
       {!isLoading && loadError && (
         <View style={styles.centerFill}>
           <Text style={styles.emptyText}>{loadError}</Text>
-          <TouchableOpacity onPress={load} style={styles.retryButton}>
+          <TouchableOpacity onPress={load} style={styles.retryButton} accessibilityRole="button" accessibilityLabel="Retry">
             <Text style={styles.retryText}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -189,12 +196,20 @@ export default function ClubsScreen() {
           data={clubs}
           keyExtractor={(item) => item._id}
           contentContainerStyle={{ padding: Spacing.md, gap: Spacing.sm }}
-          ListEmptyComponent={<Text style={styles.emptyText}>No clubs yet. Start one.</Text>}
+          ListEmptyComponent={
+            <Text style={styles.emptyText} accessibilityRole="text">
+              No clubs yet. Start one.
+            </Text>
+          }
           renderItem={({ item }) => {
             const isMember = !!currentUser && item.memberIds.includes(currentUser.id);
             const isOwner = item.ownerId === currentUser?.id;
             return (
-              <View style={styles.card}>
+              <View
+                style={styles.card}
+                accessible
+                accessibilityLabel={`${item.name}${item.description ? '. ' + item.description : ''}. ${item.memberIds.length} ${item.memberIds.length === 1 ? 'member' : 'members'}`}
+              >
                 <Text style={styles.cardTitle}>{item.name}</Text>
                 {!!item.description && <Text style={styles.cardBody}>{item.description}</Text>}
                 <Text style={styles.memberCount}>
@@ -206,6 +221,9 @@ export default function ClubsScreen() {
                     style={[styles.joinButton, isMember && styles.leaveButton]}
                     onPress={() => toggleMembership(item)}
                     disabled={pendingId === item._id}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${isMember ? 'Leave' : 'Join'} ${item.name}`}
+                    accessibilityState={{ busy: pendingId === item._id }}
                   >
                     {pendingId === item._id ? (
                       <ActivityIndicator size="small" color={isMember ? colors.text : colors.white} />
@@ -225,14 +243,17 @@ export default function ClubsScreen() {
 
       <Modal visible={createOpen} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>New Club</Text>
+          <View style={styles.modalCard} accessibilityViewIsModal accessibilityRole="alert">
+            <Text style={styles.modalTitle} accessibilityRole="header">
+              New Club
+            </Text>
             <TextInput
               style={styles.input}
               placeholder="Club name"
               placeholderTextColor={colors.textMuted}
               value={name}
               onChangeText={setName}
+              accessibilityLabel="Club name"
             />
             <TextInput
               style={[styles.input, styles.multiline]}
@@ -241,15 +262,24 @@ export default function ClubsScreen() {
               value={description}
               onChangeText={setDescription}
               multiline
+              accessibilityLabel="Description, optional"
             />
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalCancel} onPress={() => setCreateOpen(false)}>
+              <TouchableOpacity
+                style={styles.modalCancel}
+                onPress={() => setCreateOpen(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel"
+              >
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalSubmit, !name.trim() && styles.postButtonDisabled]}
                 onPress={handleCreate}
                 disabled={!name.trim() || isCreating}
+                accessibilityRole="button"
+                accessibilityLabel="Create club"
+                accessibilityState={{ disabled: !name.trim() || isCreating, busy: isCreating }}
               >
                 {isCreating ? <ActivityIndicator size="small" color={colors.white} /> : <Text style={styles.modalSubmitText}>Create</Text>}
               </TouchableOpacity>

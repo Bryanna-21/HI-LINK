@@ -152,9 +152,16 @@ export default function AnnouncementsScreen() {
       <StatusBanner status="real" note="Announcements are saved to the real backend." />
 
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Announcements</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          Announcements
+        </Text>
         {canPost && (
-          <TouchableOpacity style={styles.createButton} onPress={() => setCreateOpen(true)}>
+          <TouchableOpacity
+            style={styles.createButton}
+            onPress={() => setCreateOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="New announcement"
+          >
             <Text style={styles.createButtonText}>+ New</Text>
           </TouchableOpacity>
         )}
@@ -169,7 +176,7 @@ export default function AnnouncementsScreen() {
       {!isLoading && loadError && (
         <View style={styles.centerFill}>
           <Text style={styles.emptyText}>{loadError}</Text>
-          <TouchableOpacity onPress={load} style={styles.retryButton}>
+          <TouchableOpacity onPress={load} style={styles.retryButton} accessibilityRole="button" accessibilityLabel="Retry">
             <Text style={styles.retryText}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -180,9 +187,17 @@ export default function AnnouncementsScreen() {
           data={announcements}
           keyExtractor={(item) => item._id}
           contentContainerStyle={{ padding: Spacing.md, gap: Spacing.sm }}
-          ListEmptyComponent={<Text style={styles.emptyText}>No announcements yet.</Text>}
+          ListEmptyComponent={
+            <Text style={styles.emptyText} accessibilityRole="text">
+              No announcements yet.
+            </Text>
+          }
           renderItem={({ item }) => (
-            <View style={styles.card}>
+            <View
+              style={styles.card}
+              accessible
+              accessibilityLabel={`${item.title}. ${item.body}. Posted ${new Date(item.createdAt).toLocaleDateString()}`}
+            >
               <Text style={styles.cardTitle}>{item.title}</Text>
               <Text style={styles.cardBody}>{item.body}</Text>
               <Text style={styles.meta}>{new Date(item.createdAt).toLocaleDateString()}</Text>
@@ -193,14 +208,17 @@ export default function AnnouncementsScreen() {
 
       <Modal visible={createOpen} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>New Announcement</Text>
+          <View style={styles.modalCard} accessibilityViewIsModal accessibilityRole="alert">
+            <Text style={styles.modalTitle} accessibilityRole="header">
+              New Announcement
+            </Text>
             <TextInput
               style={styles.input}
               placeholder="Title"
               placeholderTextColor={colors.textMuted}
               value={title}
               onChangeText={setTitle}
+              accessibilityLabel="Announcement title"
             />
             <TextInput
               style={[styles.input, styles.multiline]}
@@ -209,15 +227,24 @@ export default function AnnouncementsScreen() {
               value={body}
               onChangeText={setBody}
               multiline
+              accessibilityLabel="Announcement body"
             />
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalCancel} onPress={() => setCreateOpen(false)}>
+              <TouchableOpacity
+                style={styles.modalCancel}
+                onPress={() => setCreateOpen(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel"
+              >
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalSubmit, (!title.trim() || !body.trim()) && styles.postButtonDisabled]}
                 onPress={handleCreate}
                 disabled={!title.trim() || !body.trim() || isCreating}
+                accessibilityRole="button"
+                accessibilityLabel="Post"
+                accessibilityState={{ disabled: !title.trim() || !body.trim() || isCreating, busy: isCreating }}
               >
                 {isCreating ? <ActivityIndicator size="small" color={colors.white} /> : <Text style={styles.modalSubmitText}>Post</Text>}
               </TouchableOpacity>

@@ -209,7 +209,7 @@ export default function AssignmentDetailScreen() {
     return (
       <View style={styles.centerFill}>
         <Text style={styles.emptyText}>{loadError ?? 'Assignment not found.'}</Text>
-        <TouchableOpacity onPress={load} style={styles.retryButton}>
+        <TouchableOpacity onPress={load} style={styles.retryButton} accessibilityRole="button" accessibilityLabel="Retry">
           <Text style={styles.retryText}>Retry</Text>
         </TouchableOpacity>
       </View>
@@ -221,7 +221,9 @@ export default function AssignmentDetailScreen() {
       <StatusBanner status="real" note="Assignment and submissions are saved to the real backend." />
 
       <View style={styles.card}>
-        <Text style={styles.assignmentTitle}>{assignment.title}</Text>
+        <Text style={styles.assignmentTitle} accessibilityRole="header">
+          {assignment.title}
+        </Text>
         {!!assignment.instructions && <Text style={styles.instructions}>{assignment.instructions}</Text>}
         <View style={styles.metaRow}>
           {!!assignment.dueDate && (
@@ -233,7 +235,9 @@ export default function AssignmentDetailScreen() {
 
       {!isGrader && (
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>{mySubmission ? 'Your submission' : 'Submit your answer'}</Text>
+          <Text style={styles.sectionTitle} accessibilityRole="header">
+            {mySubmission ? 'Your submission' : 'Submit your answer'}
+          </Text>
 
           {mySubmission?.grade != null && (
             <View style={styles.gradeBanner}>
@@ -252,12 +256,16 @@ export default function AssignmentDetailScreen() {
             onChangeText={setAnswer}
             multiline
             editable={!isSubmitting}
+            accessibilityLabel="Your answer"
           />
 
           <TouchableOpacity
             style={[styles.submitButton, !answer.trim() && styles.disabledButton]}
             onPress={handleSubmit}
             disabled={!answer.trim() || isSubmitting}
+            accessibilityRole="button"
+            accessibilityLabel={mySubmission ? 'Resubmit' : 'Submit'}
+            accessibilityState={{ disabled: !answer.trim() || isSubmitting, busy: isSubmitting }}
           >
             {isSubmitting ? (
               <ActivityIndicator size="small" color={colors.white} />
@@ -274,7 +282,9 @@ export default function AssignmentDetailScreen() {
 
       {isGrader && (
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Submissions ({allSubmissions.length})</Text>
+          <Text style={styles.sectionTitle} accessibilityRole="header">
+            Submissions ({allSubmissions.length})
+          </Text>
 
           {allSubmissions.length === 0 && <Text style={styles.emptyText}>No submissions yet.</Text>}
 
@@ -302,6 +312,7 @@ export default function AssignmentDetailScreen() {
                       value={gradeInput}
                       onChangeText={setGradeInput}
                       keyboardType="numeric"
+                      accessibilityLabel={`Score, out of ${assignment.maxScore}`}
                     />
                     <TextInput
                       style={[styles.input, styles.multiline]}
@@ -310,15 +321,24 @@ export default function AssignmentDetailScreen() {
                       value={feedbackInput}
                       onChangeText={setFeedbackInput}
                       multiline
+                      accessibilityLabel="Feedback, optional"
                     />
                     <View style={{ flexDirection: 'row', gap: 8 }}>
-                      <TouchableOpacity style={styles.modalCancel} onPress={() => setGradingId(null)}>
+                      <TouchableOpacity
+                        style={styles.modalCancel}
+                        onPress={() => setGradingId(null)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Cancel grading"
+                      >
                         <Text style={styles.modalCancelText}>Cancel</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[styles.modalSubmit, !gradeInput.trim() && styles.disabledButton]}
                         onPress={() => handleGrade(item._id)}
                         disabled={!gradeInput.trim() || isGrading}
+                        accessibilityRole="button"
+                        accessibilityLabel="Save grade"
+                        accessibilityState={{ disabled: !gradeInput.trim() || isGrading, busy: isGrading }}
                       >
                         {isGrading ? (
                           <ActivityIndicator size="small" color={colors.white} />
@@ -329,7 +349,12 @@ export default function AssignmentDetailScreen() {
                     </View>
                   </View>
                 ) : (
-                  <TouchableOpacity style={styles.gradeLink} onPress={() => startGrading(item)}>
+                  <TouchableOpacity
+                    style={styles.gradeLink}
+                    onPress={() => startGrading(item)}
+                    accessibilityRole="button"
+                    accessibilityLabel={item.grade != null ? `Edit grade for ${item.studentId}` : `Grade submission from ${item.studentId}`}
+                  >
                     <Text style={styles.gradeLinkText}>{item.grade != null ? 'Edit grade' : 'Grade this'}</Text>
                   </TouchableOpacity>
                 )}

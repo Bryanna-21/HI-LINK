@@ -144,7 +144,9 @@ export default function ForgotPasswordScreen() {
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.content}>
-        <Text style={styles.title}>Reset Password</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          Reset Password
+        </Text>
 
         {step === 'email' ? (
           <>
@@ -162,14 +164,22 @@ export default function ForgotPasswordScreen() {
                 autoCapitalize="none"
                 keyboardType="email-address"
                 editable={!loading}
+                accessibilityLabel="University email"
               />
 
-              {error ? <Text style={styles.error}>{error}</Text> : null}
+              {error ? (
+                <Text style={styles.error} accessibilityLiveRegion="polite">
+                  {error}
+                </Text>
+              ) : null}
 
               <TouchableOpacity
                 style={[styles.button, loading && styles.buttonDisabled]}
                 onPress={handleRequestCode}
                 disabled={loading}
+                accessibilityRole="button"
+                accessibilityLabel="Send reset code"
+                accessibilityState={{ disabled: loading, busy: loading }}
               >
                 {loading ? (
                   <ActivityIndicator color={colors.white} />
@@ -194,6 +204,7 @@ export default function ForgotPasswordScreen() {
                 keyboardType="number-pad"
                 maxLength={6}
                 editable={!loading}
+                accessibilityLabel="6-digit verification code"
               />
 
               <View style={styles.passwordRow}>
@@ -205,8 +216,14 @@ export default function ForgotPasswordScreen() {
                   onChangeText={setNewPassword}
                   secureTextEntry={!showPassword}
                   editable={!loading}
+                  accessibilityLabel="New password"
                 />
-                <TouchableOpacity style={styles.passwordToggle} onPress={() => setShowPassword((v) => !v)}>
+                <TouchableOpacity
+                  style={styles.passwordToggle}
+                  onPress={() => setShowPassword((v) => !v)}
+                  accessibilityRole="button"
+                  accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                >
                   <Text style={styles.passwordToggleText}>{showPassword ? 'Hide' : 'Show'}</Text>
                 </TouchableOpacity>
               </View>
@@ -219,14 +236,22 @@ export default function ForgotPasswordScreen() {
                 onChangeText={setConfirmNewPassword}
                 secureTextEntry={!showPassword}
                 editable={!loading}
+                accessibilityLabel="Confirm new password"
               />
 
-              {error ? <Text style={styles.error}>{error}</Text> : null}
+              {error ? (
+                <Text style={styles.error} accessibilityLiveRegion="polite">
+                  {error}
+                </Text>
+              ) : null}
 
               <TouchableOpacity
                 style={[styles.button, loading && styles.buttonDisabled]}
                 onPress={handleResetPassword}
                 disabled={loading}
+                accessibilityRole="button"
+                accessibilityLabel="Reset password"
+                accessibilityState={{ disabled: loading, busy: loading }}
               >
                 {loading ? (
                   <ActivityIndicator color={colors.white} />
@@ -239,7 +264,7 @@ export default function ForgotPasswordScreen() {
         )}
 
         <Link href="/auth/login" asChild>
-          <TouchableOpacity style={styles.linkButton}>
+          <TouchableOpacity style={styles.linkButton} accessibilityRole="link">
             <Text style={styles.linkText}>Back to login</Text>
           </TouchableOpacity>
         </Link>

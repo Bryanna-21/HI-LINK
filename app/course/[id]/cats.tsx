@@ -84,7 +84,7 @@ export default function CourseCatsScreen() {
       {!isLoading && loadError && (
         <View style={styles.centerFill}>
           <Text style={styles.emptyText}>{loadError}</Text>
-          <TouchableOpacity onPress={load} style={styles.retryButton}>
+          <TouchableOpacity onPress={load} style={styles.retryButton} accessibilityRole="button" accessibilityLabel="Retry">
             <Text style={styles.retryText}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -95,9 +95,18 @@ export default function CourseCatsScreen() {
           data={cats}
           keyExtractor={(item) => item._id}
           contentContainerStyle={{ padding: Spacing.md, gap: Spacing.sm }}
-          ListEmptyComponent={<Text style={styles.emptyText}>No CATs scheduled for this course yet.</Text>}
+          ListEmptyComponent={
+            <Text style={styles.emptyText} accessibilityRole="text">
+              No CATs scheduled for this course yet.
+            </Text>
+          }
           renderItem={({ item }) => (
-            <TouchableOpacity style={styles.card} onPress={() => router.push(`/cat/${item._id}` as any)}>
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() => router.push(`/cat/${item._id}` as any)}
+              accessibilityRole="button"
+              accessibilityLabel={`${item.title}${item.date ? ', ' + new Date(item.date).toLocaleDateString() : ''}${item.venue ? ', ' + item.venue : ''}, max score ${item.maxScore}`}
+            >
               <Text style={styles.cardTitle}>{item.title}</Text>
               <View style={styles.metaRow}>
                 {!!item.date && <Text style={styles.meta}>{new Date(item.date).toLocaleDateString()}</Text>}

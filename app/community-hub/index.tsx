@@ -40,11 +40,19 @@ export default function CommunityHubScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ padding: Spacing.md, gap: Spacing.md }}>
-      <Text style={styles.title}>Community Hub</Text>
+      <Text style={styles.title} accessibilityRole="header">
+        Community Hub
+      </Text>
       <StatusBanner status="real" note="Clubs, Projects, Study Groups, Polls, and Announcements are all connected to the real backend now." />
 
       {SECTIONS.map((section) => (
-        <TouchableOpacity key={section.href} style={styles.card} onPress={() => router.push(section.href as any)}>
+        <TouchableOpacity
+          key={section.href}
+          style={styles.card}
+          onPress={() => router.push(section.href as any)}
+          accessibilityRole="button"
+          accessibilityLabel={`${section.title}, ${section.subtitle}`}
+        >
           <Text style={styles.cardTitle}>{section.title}</Text>
           <Text style={styles.cardSubtitle}>{section.subtitle}</Text>
         </TouchableOpacity>

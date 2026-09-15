@@ -83,7 +83,7 @@ export default function CourseAssignmentsScreen() {
       {!isLoading && loadError && (
         <View style={styles.centerFill}>
           <Text style={styles.emptyText}>{loadError}</Text>
-          <TouchableOpacity onPress={load} style={styles.retryButton}>
+          <TouchableOpacity onPress={load} style={styles.retryButton} accessibilityRole="button" accessibilityLabel="Retry">
             <Text style={styles.retryText}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -94,9 +94,18 @@ export default function CourseAssignmentsScreen() {
           data={assignments}
           keyExtractor={(item) => item._id}
           contentContainerStyle={{ padding: Spacing.md, gap: Spacing.sm }}
-          ListEmptyComponent={<Text style={styles.emptyText}>No assignments posted for this course yet.</Text>}
+          ListEmptyComponent={
+            <Text style={styles.emptyText} accessibilityRole="text">
+              No assignments posted for this course yet.
+            </Text>
+          }
           renderItem={({ item }) => (
-            <TouchableOpacity style={styles.card} onPress={() => router.push(`/assignment/${item._id}` as any)}>
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() => router.push(`/assignment/${item._id}` as any)}
+              accessibilityRole="button"
+              accessibilityLabel={`${item.title}${item.dueDate ? ', due ' + new Date(item.dueDate).toLocaleDateString() : ''}, max score ${item.maxScore}`}
+            >
               <Text style={styles.cardTitle}>{item.title}</Text>
               <View style={styles.metaRow}>
                 {!!item.dueDate && <Text style={styles.meta}>Due {new Date(item.dueDate).toLocaleDateString()}</Text>}

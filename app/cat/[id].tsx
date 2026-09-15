@@ -167,7 +167,7 @@ export default function CatDetailScreen() {
     return (
       <View style={styles.centerFill}>
         <Text style={styles.emptyText}>{loadError ?? 'CAT not found.'}</Text>
-        <TouchableOpacity onPress={load} style={styles.retryButton}>
+        <TouchableOpacity onPress={load} style={styles.retryButton} accessibilityRole="button" accessibilityLabel="Retry">
           <Text style={styles.retryText}>Retry</Text>
         </TouchableOpacity>
       </View>
@@ -179,7 +179,9 @@ export default function CatDetailScreen() {
       <StatusBanner status="real" note="CAT details and results are saved to the real backend." />
 
       <View style={styles.card}>
-        <Text style={styles.catTitle}>{cat.title}</Text>
+        <Text style={styles.catTitle} accessibilityRole="header">
+          {cat.title}
+        </Text>
         {!!cat.coverage && <Text style={styles.coverage}>{cat.coverage}</Text>}
         <View style={styles.metaRow}>
           {!!cat.date && <Text style={styles.meta}>{new Date(cat.date).toLocaleDateString()}</Text>}
@@ -190,7 +192,9 @@ export default function CatDetailScreen() {
 
       {!isPublisher && (
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Your result</Text>
+          <Text style={styles.sectionTitle} accessibilityRole="header">
+            Your result
+          </Text>
           {myResult ? (
             <View style={styles.gradeBanner}>
               <Text style={styles.gradeBannerText}>
@@ -207,7 +211,9 @@ export default function CatDetailScreen() {
 
       {isPublisher && (
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Publish a result</Text>
+          <Text style={styles.sectionTitle} accessibilityRole="header">
+            Publish a result
+          </Text>
           <Text style={styles.roughEdgeNote}>
             Enter the student&apos;s account ID directly — there&apos;s no name lookup for this yet.
           </Text>
@@ -219,6 +225,7 @@ export default function CatDetailScreen() {
             value={studentId}
             onChangeText={setStudentId}
             autoCapitalize="none"
+            accessibilityLabel="Student ID"
           />
           <TextInput
             style={styles.input}
@@ -227,6 +234,7 @@ export default function CatDetailScreen() {
             value={score}
             onChangeText={setScore}
             keyboardType="numeric"
+            accessibilityLabel={`Score, out of ${cat.maxScore}`}
           />
           <TextInput
             style={[styles.input, styles.multiline]}
@@ -235,14 +243,22 @@ export default function CatDetailScreen() {
             value={feedback}
             onChangeText={setFeedback}
             multiline
+            accessibilityLabel="Feedback, optional"
           />
 
-          {!!publishMessage && <Text style={styles.publishMessage}>{publishMessage}</Text>}
+          {!!publishMessage && (
+            <Text style={styles.publishMessage} accessibilityLiveRegion="polite">
+              {publishMessage}
+            </Text>
+          )}
 
           <TouchableOpacity
             style={[styles.submitButton, (!studentId.trim() || !score.trim()) && styles.disabledButton]}
             onPress={handlePublish}
             disabled={!studentId.trim() || !score.trim() || isPublishing}
+            accessibilityRole="button"
+            accessibilityLabel="Publish result"
+            accessibilityState={{ disabled: !studentId.trim() || !score.trim() || isPublishing, busy: isPublishing }}
           >
             {isPublishing ? (
               <ActivityIndicator size="small" color={colors.white} />

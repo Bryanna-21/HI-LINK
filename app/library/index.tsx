@@ -132,7 +132,9 @@ export default function LibraryScreen() {
       refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => load(true)} />}
     >
       <View style={styles.header}>
-        <Text style={styles.title}>Library</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          Library
+        </Text>
       </View>
       <StatusBanner status="real" note="Books and digital resources are live from your account." />
 
@@ -142,14 +144,21 @@ export default function LibraryScreen() {
         </View>
       ) : (
         <>
-          <Text style={styles.sectionTitle}>Physical books</Text>
+          <Text style={styles.sectionTitle} accessibilityRole="header">
+            Physical books
+          </Text>
           {books.length === 0 ? (
             <View style={styles.card}>
               <Text style={styles.cardMuted}>No books available yet.</Text>
             </View>
           ) : (
             books.map((book) => (
-              <View key={book._id} style={styles.card}>
+              <View
+                key={book._id}
+                style={styles.card}
+                accessible
+                accessibilityLabel={`${book.title}${book.author ? ', by ' + book.author : ''}${typeof book.availableCopies === 'number' ? ', ' + book.availableCopies + ' available' : ''}`}
+              >
                 <Text style={styles.cardTitle}>{book.title}</Text>
                 {book.author ? <Text style={styles.cardMuted}>{book.author}</Text> : null}
                 <View style={styles.rowBetween}>
@@ -160,6 +169,9 @@ export default function LibraryScreen() {
                     style={styles.borrowButton}
                     disabled={borrowingId === book._id}
                     onPress={() => handleBorrow(book)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Borrow ${book.title}`}
+                    accessibilityState={{ disabled: borrowingId === book._id, busy: borrowingId === book._id }}
                   >
                     <Text style={styles.borrowButtonText}>
                       {borrowingId === book._id ? 'Borrowing…' : 'Borrow'}
@@ -170,14 +182,21 @@ export default function LibraryScreen() {
             ))
           )}
 
-          <Text style={styles.sectionTitle}>Digital library</Text>
+          <Text style={styles.sectionTitle} accessibilityRole="header">
+            Digital library
+          </Text>
           {digital.length === 0 ? (
             <View style={styles.card}>
               <Text style={styles.cardMuted}>No digital resources yet.</Text>
             </View>
           ) : (
             digital.map((res) => (
-              <View key={res._id} style={styles.card}>
+              <View
+                key={res._id}
+                style={styles.card}
+                accessible
+                accessibilityLabel={`${res.title}${res.type ? ', ' + res.type : ''}`}
+              >
                 <Text style={styles.cardTitle}>{res.title}</Text>
                 {res.type ? <Text style={styles.cardMuted}>{res.type}</Text> : null}
               </View>

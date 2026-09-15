@@ -80,7 +80,9 @@ export default function EventsScreen() {
       style={styles.container}
       refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => load(true)} />}
     >
-      <Text style={styles.title}>Events</Text>
+      <Text style={styles.title} accessibilityRole="header">
+        Events
+      </Text>
       <StatusBanner status="real" note="Events are fetched live from your account." />
 
       {isLoading ? (
@@ -95,7 +97,13 @@ export default function EventsScreen() {
         </View>
       ) : (
         events.map((event) => (
-          <TouchableOpacity key={event._id} style={styles.card} onPress={() => router.push(`/event/${event._id}` as any)}>
+          <TouchableOpacity
+            key={event._id}
+            style={styles.card}
+            onPress={() => router.push(`/event/${event._id}` as any)}
+            accessibilityRole="button"
+            accessibilityLabel={`${event.title}${event.date ? ', ' + event.date : ''}${event.location ? ', ' + event.location : ''}`}
+          >
             <Text style={styles.cardTitle}>{event.title}</Text>
             {event.date ? <Text style={styles.cardMuted}>{event.date}</Text> : null}
             {event.location ? <Text style={styles.cardMuted}>{event.location}</Text> : null}

@@ -79,17 +79,28 @@ export function ShellScreen({ title, subtitle, sections }: ShellScreenProps) {
     <ScrollView style={styles.container}>
       {title ? (
         <View style={styles.header}>
-          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.title} accessibilityRole="header">
+            {title}
+          </Text>
           {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
         </View>
       ) : null}
 
       {sections.map((section) => (
         <View key={section.title} style={styles.section}>
-          <Text style={styles.sectionTitle}>{section.title}</Text>
+          <Text style={styles.sectionTitle} accessibilityRole="header">
+            {section.title}
+          </Text>
           <StatusBanner status="shell" note={section.backendNote} />
           {section.items.map((item) => (
-            <View key={item} style={styles.itemCard}>
+            <View
+              key={item}
+              style={styles.itemCard}
+              accessibilityElementsHidden={false}
+              importantForAccessibility="yes"
+              accessibilityLabel={`${item}, not yet available`}
+              accessibilityState={{ disabled: true }}
+            >
               <Text style={styles.itemText}>{item}</Text>
             </View>
           ))}

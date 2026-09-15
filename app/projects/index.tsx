@@ -185,8 +185,15 @@ export default function ProjectsScreen() {
       <StatusBanner status="real" note="Projects are saved to the real backend." />
 
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Projects</Text>
-        <TouchableOpacity style={styles.createButton} onPress={() => setCreateOpen(true)}>
+        <Text style={styles.title} accessibilityRole="header">
+          Projects
+        </Text>
+        <TouchableOpacity
+          style={styles.createButton}
+          onPress={() => setCreateOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel="New project"
+        >
           <Text style={styles.createButtonText}>+ New Project</Text>
         </TouchableOpacity>
       </View>
@@ -200,7 +207,7 @@ export default function ProjectsScreen() {
       {!isLoading && loadError && (
         <View style={styles.centerFill}>
           <Text style={styles.emptyText}>{loadError}</Text>
-          <TouchableOpacity onPress={load} style={styles.retryButton}>
+          <TouchableOpacity onPress={load} style={styles.retryButton} accessibilityRole="button" accessibilityLabel="Retry">
             <Text style={styles.retryText}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -211,9 +218,17 @@ export default function ProjectsScreen() {
           data={projects}
           keyExtractor={(item) => item._id}
           contentContainerStyle={{ padding: Spacing.md, gap: Spacing.sm }}
-          ListEmptyComponent={<Text style={styles.emptyText}>No projects yet. Start one.</Text>}
+          ListEmptyComponent={
+            <Text style={styles.emptyText} accessibilityRole="text">
+              No projects yet. Start one.
+            </Text>
+          }
           renderItem={({ item }) => (
-            <View style={styles.card}>
+            <View
+              style={styles.card}
+              accessible
+              accessibilityLabel={`${item.title}, ${STATUS_LABEL[item.status]}${item.description ? '. ' + item.description : ''}. ${item.contributorIds.length} ${item.contributorIds.length === 1 ? 'contributor' : 'contributors'}`}
+            >
               <View style={styles.cardHeaderRow}>
                 <Text style={styles.cardTitle}>{item.title}</Text>
                 <View style={styles.statusBadge}>
@@ -231,14 +246,17 @@ export default function ProjectsScreen() {
 
       <Modal visible={createOpen} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>New Project</Text>
+          <View style={styles.modalCard} accessibilityViewIsModal accessibilityRole="alert">
+            <Text style={styles.modalTitle} accessibilityRole="header">
+              New Project
+            </Text>
             <TextInput
               style={styles.input}
               placeholder="Title"
               placeholderTextColor={colors.textMuted}
               value={title}
               onChangeText={setTitle}
+              accessibilityLabel="Project title"
             />
             <TextInput
               style={[styles.input, styles.multiline]}
@@ -247,15 +265,21 @@ export default function ProjectsScreen() {
               value={description}
               onChangeText={setDescription}
               multiline
+              accessibilityLabel="Description, optional"
             />
 
-            <Text style={styles.fieldLabel}>Status</Text>
-            <View style={styles.statusPicker}>
+            <Text style={styles.fieldLabel} accessibilityRole="header">
+              Status
+            </Text>
+            <View style={styles.statusPicker} accessibilityRole="radiogroup">
               {STATUSES.map((s) => (
                 <TouchableOpacity
                   key={s}
                   style={[styles.statusOption, status === s && styles.statusOptionActive]}
                   onPress={() => setStatus(s)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: status === s }}
+                  accessibilityLabel={STATUS_LABEL[s]}
                 >
                   <Text style={[styles.statusOptionText, status === s && styles.statusOptionTextActive]}>
                     {STATUS_LABEL[s]}
@@ -265,13 +289,21 @@ export default function ProjectsScreen() {
             </View>
 
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalCancel} onPress={() => setCreateOpen(false)}>
+              <TouchableOpacity
+                style={styles.modalCancel}
+                onPress={() => setCreateOpen(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel"
+              >
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalSubmit, !title.trim() && styles.postButtonDisabled]}
                 onPress={handleCreate}
                 disabled={!title.trim() || isCreating}
+                accessibilityRole="button"
+                accessibilityLabel="Create project"
+                accessibilityState={{ disabled: !title.trim() || isCreating, busy: isCreating }}
               >
                 {isCreating ? <ActivityIndicator size="small" color={colors.white} /> : <Text style={styles.modalSubmitText}>Create</Text>}
               </TouchableOpacity>

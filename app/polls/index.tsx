@@ -193,8 +193,15 @@ export default function PollsScreen() {
       <StatusBanner status="real" note="Polls and votes are saved to the real backend." />
 
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Polls</Text>
-        <TouchableOpacity style={styles.createButton} onPress={() => setCreateOpen(true)}>
+        <Text style={styles.title} accessibilityRole="header">
+          Polls
+        </Text>
+        <TouchableOpacity
+          style={styles.createButton}
+          onPress={() => setCreateOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel="New poll"
+        >
           <Text style={styles.createButtonText}>+ New Poll</Text>
         </TouchableOpacity>
       </View>
@@ -208,7 +215,7 @@ export default function PollsScreen() {
       {!isLoading && loadError && (
         <View style={styles.centerFill}>
           <Text style={styles.emptyText}>{loadError}</Text>
-          <TouchableOpacity onPress={load} style={styles.retryButton}>
+          <TouchableOpacity onPress={load} style={styles.retryButton} accessibilityRole="button" accessibilityLabel="Retry">
             <Text style={styles.retryText}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -219,7 +226,11 @@ export default function PollsScreen() {
           data={polls}
           keyExtractor={(item) => item._id}
           contentContainerStyle={{ padding: Spacing.md, gap: Spacing.md }}
-          ListEmptyComponent={<Text style={styles.emptyText}>No active polls. Ask something.</Text>}
+          ListEmptyComponent={
+            <Text style={styles.emptyText} accessibilityRole="text">
+              No active polls. Ask something.
+            </Text>
+          }
           renderItem={({ item }) => {
             const votedIndex = myVoteIndex(item);
             const total = totalVotes(item);
@@ -227,29 +238,40 @@ export default function PollsScreen() {
 
             return (
               <View style={styles.card}>
-                <Text style={styles.cardTitle}>{item.question}</Text>
+                <Text style={styles.cardTitle} accessibilityRole="header">
+                  {item.question}
+                </Text>
 
-                {item.options.map((option, index) => {
-                  const pct = total > 0 ? Math.round((option.voterIds.length / total) * 100) : 0;
-                  const isMyVote = votedIndex === index;
+                <View accessibilityRole="radiogroup">
+                  {item.options.map((option, index) => {
+                    const pct = total > 0 ? Math.round((option.voterIds.length / total) * 100) : 0;
+                    const isMyVote = votedIndex === index;
 
-                  return (
-                    <TouchableOpacity
-                      key={index}
-                      style={[styles.optionRow, isMyVote && styles.optionRowActive]}
-                      onPress={() => handleVote(item._id, index)}
-                      disabled={isVoting}
-                    >
-                      <View style={[styles.optionFill, { width: `${pct}%` }]} />
-                      <View style={styles.optionContent}>
-                        <Text style={[styles.optionText, isMyVote && styles.optionTextActive]}>
-                          {option.text} {isMyVote ? '✓' : ''}
-                        </Text>
-                        <Text style={styles.optionPct}>{pct}%</Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
+                    return (
+                      <TouchableOpacity
+                        key={index}
+                        style={[styles.optionRow, isMyVote && styles.optionRowActive]}
+                        onPress={() => handleVote(item._id, index)}
+                        disabled={isVoting}
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: isMyVote, disabled: isVoting }}
+                        accessibilityLabel={`${option.text}, ${pct} percent, ${option.voterIds.length} ${option.voterIds.length === 1 ? 'vote' : 'votes'}`}
+                      >
+                        <View
+                          style={[styles.optionFill, { width: `${pct}%` }]}
+                          accessibilityElementsHidden
+                          importantForAccessibility="no"
+                        />
+                        <View style={styles.optionContent}>
+                          <Text style={[styles.optionText, isMyVote && styles.optionTextActive]}>
+                            {option.text} {isMyVote ? '✓' : ''}
+                          </Text>
+                          <Text style={styles.optionPct}>{pct}%</Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
 
                 <Text style={styles.voteCount}>{total} vote{total === 1 ? '' : 's'}</Text>
               </View>
@@ -260,14 +282,17 @@ export default function PollsScreen() {
 
       <Modal visible={createOpen} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>New Poll</Text>
+          <View style={styles.modalCard} accessibilityViewIsModal accessibilityRole="alert">
+            <Text style={styles.modalTitle} accessibilityRole="header">
+              New Poll
+            </Text>
             <TextInput
               style={styles.input}
               placeholder="Question"
               placeholderTextColor={colors.textMuted}
               value={question}
               onChangeText={setQuestion}
+              accessibilityLabel="Poll question"
             />
 
             {optionInputs.map((value, index) => (
@@ -278,21 +303,34 @@ export default function PollsScreen() {
                 placeholderTextColor={colors.textMuted}
                 value={value}
                 onChangeText={(v) => updateOptionInput(index, v)}
+                accessibilityLabel={`Option ${index + 1}`}
               />
             ))}
 
-            <TouchableOpacity onPress={addOptionInput}>
+            <TouchableOpacity
+              onPress={addOptionInput}
+              accessibilityRole="button"
+              accessibilityLabel="Add another option"
+            >
               <Text style={styles.addOptionText}>+ Add another option</Text>
             </TouchableOpacity>
 
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalCancel} onPress={() => setCreateOpen(false)}>
+              <TouchableOpacity
+                style={styles.modalCancel}
+                onPress={() => setCreateOpen(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel"
+              >
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalSubmit, !canSubmitCreate && styles.postButtonDisabled]}
                 onPress={handleCreate}
                 disabled={!canSubmitCreate || isCreating}
+                accessibilityRole="button"
+                accessibilityLabel="Create poll"
+                accessibilityState={{ disabled: !canSubmitCreate || isCreating, busy: isCreating }}
               >
                 {isCreating ? <ActivityIndicator size="small" color={colors.white} /> : <Text style={styles.modalSubmitText}>Create</Text>}
               </TouchableOpacity>

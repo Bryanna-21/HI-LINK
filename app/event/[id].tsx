@@ -60,12 +60,17 @@ export default function EventDetailScreen() {
       />
 
       <View style={styles.card}>
-        <Text style={styles.title}>Placeholder Event</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          Placeholder Event
+        </Text>
         <Text style={styles.meta}>Date, time, and location would appear here.</Text>
 
         <TouchableOpacity
           style={[styles.rsvpButton, isRsvped && styles.rsvpButtonActive]}
           onPress={() => setIsRsvped((v) => !v)}
+          accessibilityRole="button"
+          accessibilityLabel={isRsvped ? "You're going, not saved" : 'RSVP, not saved'}
+          accessibilityState={{ selected: isRsvped }}
         >
           <Text style={[styles.rsvpButtonText, isRsvped && styles.rsvpButtonTextActive]}>
             {isRsvped ? "You're going (not saved)" : 'RSVP (not saved)'}
@@ -74,7 +79,9 @@ export default function EventDetailScreen() {
 
         {isRsvped && (
           <View style={styles.qrBox}>
-            <Text style={styles.qrPlaceholder}>▦ ▦ ▦</Text>
+            <Text style={styles.qrPlaceholder} accessibilityElementsHidden importantForAccessibility="no">
+              ▦ ▦ ▦
+            </Text>
             <Text style={styles.qrNote}>Placeholder — not a real QR code.</Text>
           </View>
         )}

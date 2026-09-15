@@ -177,8 +177,15 @@ export default function StudyGroupsScreen() {
       <StatusBanner status="real" note="Study groups are saved to the real backend." />
 
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Study Groups</Text>
-        <TouchableOpacity style={styles.createButton} onPress={() => setCreateOpen(true)}>
+        <Text style={styles.title} accessibilityRole="header">
+          Study Groups
+        </Text>
+        <TouchableOpacity
+          style={styles.createButton}
+          onPress={() => setCreateOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel="New group"
+        >
           <Text style={styles.createButtonText}>+ New Group</Text>
         </TouchableOpacity>
       </View>
@@ -192,7 +199,7 @@ export default function StudyGroupsScreen() {
       {!isLoading && loadError && (
         <View style={styles.centerFill}>
           <Text style={styles.emptyText}>{loadError}</Text>
-          <TouchableOpacity onPress={load} style={styles.retryButton}>
+          <TouchableOpacity onPress={load} style={styles.retryButton} accessibilityRole="button" accessibilityLabel="Retry">
             <Text style={styles.retryText}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -203,11 +210,19 @@ export default function StudyGroupsScreen() {
           data={groups}
           keyExtractor={(item) => item._id}
           contentContainerStyle={{ padding: Spacing.md, gap: Spacing.sm }}
-          ListEmptyComponent={<Text style={styles.emptyText}>No study groups yet. Start one.</Text>}
+          ListEmptyComponent={
+            <Text style={styles.emptyText} accessibilityRole="text">
+              No study groups yet. Start one.
+            </Text>
+          }
           renderItem={({ item }) => {
             const isMember = !!currentUser && item.memberIds.includes(currentUser.id);
             return (
-              <View style={styles.card}>
+              <View
+                style={styles.card}
+                accessible
+                accessibilityLabel={`${item.title}${item.description ? '. ' + item.description : ''}${item.meetingTime ? '. Meets ' + item.meetingTime : ''}${item.location ? ' at ' + item.location : ''}. ${item.memberIds.length} ${item.memberIds.length === 1 ? 'member' : 'members'}`}
+              >
                 <Text style={styles.cardTitle}>{item.title}</Text>
                 {!!item.description && <Text style={styles.cardBody}>{item.description}</Text>}
                 {!!item.meetingTime && <Text style={styles.meta}>🕒 {item.meetingTime}</Text>}
@@ -217,7 +232,14 @@ export default function StudyGroupsScreen() {
                 </Text>
 
                 {!isMember && (
-                  <TouchableOpacity style={styles.joinButton} onPress={() => handleJoin(item)} disabled={pendingId === item._id}>
+                  <TouchableOpacity
+                    style={styles.joinButton}
+                    onPress={() => handleJoin(item)}
+                    disabled={pendingId === item._id}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Join ${item.title}`}
+                    accessibilityState={{ busy: pendingId === item._id }}
+                  >
                     {pendingId === item._id ? (
                       <ActivityIndicator size="small" color={colors.white} />
                     ) : (
@@ -234,14 +256,17 @@ export default function StudyGroupsScreen() {
 
       <Modal visible={createOpen} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>New Study Group</Text>
+          <View style={styles.modalCard} accessibilityViewIsModal accessibilityRole="alert">
+            <Text style={styles.modalTitle} accessibilityRole="header">
+              New Study Group
+            </Text>
             <TextInput
               style={styles.input}
               placeholder="Title"
               placeholderTextColor={colors.textMuted}
               value={title}
               onChangeText={setTitle}
+              accessibilityLabel="Group title"
             />
             <TextInput
               style={[styles.input, styles.multiline]}
@@ -250,6 +275,7 @@ export default function StudyGroupsScreen() {
               value={description}
               onChangeText={setDescription}
               multiline
+              accessibilityLabel="Description, optional"
             />
             <TextInput
               style={styles.input}
@@ -257,6 +283,7 @@ export default function StudyGroupsScreen() {
               placeholderTextColor={colors.textMuted}
               value={meetingTime}
               onChangeText={setMeetingTime}
+              accessibilityLabel="Meeting time, optional"
             />
             <TextInput
               style={styles.input}
@@ -264,15 +291,24 @@ export default function StudyGroupsScreen() {
               placeholderTextColor={colors.textMuted}
               value={location}
               onChangeText={setLocation}
+              accessibilityLabel="Location, optional"
             />
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalCancel} onPress={() => setCreateOpen(false)}>
+              <TouchableOpacity
+                style={styles.modalCancel}
+                onPress={() => setCreateOpen(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel"
+              >
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalSubmit, !title.trim() && styles.postButtonDisabled]}
                 onPress={handleCreate}
                 disabled={!title.trim() || isCreating}
+                accessibilityRole="button"
+                accessibilityLabel="Create study group"
+                accessibilityState={{ disabled: !title.trim() || isCreating, busy: isCreating }}
               >
                 {isCreating ? <ActivityIndicator size="small" color={colors.white} /> : <Text style={styles.modalSubmitText}>Create</Text>}
               </TouchableOpacity>

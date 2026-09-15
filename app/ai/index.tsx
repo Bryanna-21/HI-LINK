@@ -149,7 +149,9 @@ export default function AiAssistantScreen() {
 
       {messages.length === 0 ? (
         <View style={styles.capabilitiesBox}>
-          <Text style={styles.capabilitiesTitle}>UNILINK AI can help you:</Text>
+          <Text style={styles.capabilitiesTitle} accessibilityRole="header">
+            UNILINK AI can help you:
+          </Text>
           {CAPABILITIES.map((c) => (
             <Text key={c} style={styles.capabilityItem}>• {c}</Text>
           ))}
@@ -168,6 +170,7 @@ export default function AiAssistantScreen() {
                 item.role === 'user' ? styles.userBubble : styles.assistantBubble,
                 item.isError && styles.errorBubble,
               ]}
+              accessibilityLabel={`${item.role === 'user' ? 'You' : 'AI Assistant'}: ${item.text}`}
             >
               <Text
                 style={[
@@ -184,7 +187,7 @@ export default function AiAssistantScreen() {
       )}
 
       {isSending && (
-        <View style={styles.typingRow}>
+        <View style={styles.typingRow} accessibilityLiveRegion="polite">
           <ActivityIndicator size="small" color={colors.primary} />
           <Text style={styles.typingText}>Thinking…</Text>
         </View>
@@ -198,11 +201,15 @@ export default function AiAssistantScreen() {
           value={draft}
           onChangeText={setDraft}
           editable={!isSending}
+          accessibilityLabel="Ask UniLink AI"
         />
         <TouchableOpacity
           style={[styles.sendButton, (!draft.trim() || isSending) && styles.sendButtonDisabled]}
           onPress={handleSend}
           disabled={!draft.trim() || isSending}
+          accessibilityRole="button"
+          accessibilityLabel="Ask"
+          accessibilityState={{ disabled: !draft.trim() || isSending, busy: isSending }}
         >
           <Text style={styles.sendButtonText}>Ask</Text>
         </TouchableOpacity>
