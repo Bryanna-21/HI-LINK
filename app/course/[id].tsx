@@ -184,10 +184,10 @@ export default function CourseDetailScreen() {
   };
 
   const sections = [
-    { key: 'notes', title: 'Notes', route: `/notes/${id}-note-1`, note: 'Needs: Note model + file storage + PDF viewer library.' },
+    { key: 'notes', title: 'Notes', route: `/course/${id}/notes` },
     { key: 'assignment', title: 'Assignments', route: `/course/${id}/assignments`, note: null },
     { key: 'cat', title: 'CATs', route: `/course/${id}/cats`, note: null },
-    { key: 'paper', title: 'Past Papers', route: `/paper/${id}-paper-1`, note: 'Needs: file storage + PastPaper model.' },
+    { key: 'paper', title: 'Past Papers', route: `/course/${id}/past-papers` },
     { key: 'discussion', title: 'Discussion', route: `/discussion/${id}`, note: null },
     { key: 'ai', title: 'Ask UNILINK AI', route: '/ai', note: null },
   ] as const;
