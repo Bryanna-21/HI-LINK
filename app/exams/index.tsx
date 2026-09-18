@@ -234,16 +234,44 @@ export default function ExamsScreen() {
                 </View>
               </TouchableOpacity>
 
-              {exam.status === 'Published' ? (
-                <TouchableOpacity
-                  style={styles.takeButton}
-                  onPress={() => router.push(`/exams/${exam._id}/take` as any)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Take exam: ${exam.title}`}
-                >
-                  <Text style={styles.takeButtonText}>Take Exam</Text>
-                </TouchableOpacity>
-              ) : null}
+              {(() => {
+                // Deliberately conservative: web has no equivalent
+                // client-side check at all (it just shows the button
+                // and lets the backend reject), so this isn't a ported
+                // pattern — it's a genuine improvement, but scoped
+                // narrowly to avoid disagreeing with rules only the
+                // backend actually knows (timezone handling, grace
+                // periods, endTime cutoffs). Only the unambiguous case
+                // — a startTime that's clearly still in the future —
+                // is checked here. Anything else (already started,
+                // near a boundary, no startTime set) still shows the
+                // real button and lets the backend's actual response
+                // be the source of truth, same as web.
+                const notYetOpen = exam.startTime ? new Date(exam.startTime).getTime() > Date.now() : false;
+
+                if (exam.status !== 'Published') return null;
+
+                if (notYetOpen) {
+                  return (
+                    <View style={[styles.takeButton, { backgroundColor: colors.border }]}>
+                      <Text style={[styles.takeButtonText, { color: colors.textMuted }]}>
+                        Opens {formatDate(exam.startTime)}
+                      </Text>
+                    </View>
+                  );
+                }
+
+                return (
+                  <TouchableOpacity
+                    style={styles.takeButton}
+                    onPress={() => router.push(`/exams/${exam._id}/take` as any)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Take exam: ${exam.title}`}
+                  >
+                    <Text style={styles.takeButtonText}>Take Exam</Text>
+                  </TouchableOpacity>
+                );
+              })()}
             </View>
           );
         })

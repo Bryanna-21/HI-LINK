@@ -62,6 +62,7 @@ export default function TakeExamScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [exam, setExam] = useState<Exam | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -221,6 +222,7 @@ export default function TakeExamScreen() {
   const loadExam = useCallback(async () => {
     try {
       setLoading(true);
+      setLoadError(null);
       const res = await api.get(`/exams/${id}`);
       const data: Exam = res.data?.data;
       setExam(data);
@@ -237,8 +239,18 @@ export default function TakeExamScreen() {
         });
         setAnswers(initial);
       }
-    } catch (err) {
-      router.replace('/exams');
+    } catch (err: any) {
+      // Was: silently router.replace('/exams') on ANY error, discarding
+      // the backend's actual message. A Published exam can still be
+      // rejected by the backend if its start/end window hasn't opened
+      // or has already closed — web shows that exact backend message
+      // rather than doing its own client-side time-window check (it
+      // has none either), so mobile should behave the same way instead
+      // of silently bouncing the student with no explanation. This was
+      // the real cause behind "blank screen, exam routes not found":
+      // not a missing route, but a real rejection whose message never
+      // reached the screen.
+      setLoadError(err?.response?.data?.message || 'This exam could not be loaded.');
     } finally {
       setLoading(false);
     }
@@ -321,11 +333,32 @@ export default function TakeExamScreen() {
     return () => sub.remove();
   }, [loading, submitting]);
 
-  if (loading || !exam) {
+  if (loading) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator color={colors.primary} size="large" />
         <Text style={styles.loadingText}>Loading exam...</Text>
+      </View>
+    );
+  }
+
+  if (loadError || !exam) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.examTitle} accessibilityRole="header">
+          Can't open this exam
+        </Text>
+        <Text style={[styles.loadingText, { marginTop: Spacing.sm, textAlign: 'center', paddingHorizontal: Spacing.lg }]}>
+          {loadError || 'This exam could not be loaded.'}
+        </Text>
+        <TouchableOpacity
+          style={[styles.navButton, styles.navButtonPrimary, { marginTop: Spacing.lg, paddingHorizontal: Spacing.xl }]}
+          onPress={() => router.replace('/exams')}
+          accessibilityRole="button"
+          accessibilityLabel="Back to Exams"
+        >
+          <Text style={styles.navButtonTextLight}>Back to Exams</Text>
+        </TouchableOpacity>
       </View>
     );
   }
