@@ -9,6 +9,7 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
+import { router } from 'expo-router';
 import { api } from '../../src/api/client';
 import { StatusBanner } from '../../src/components/StatusBanner';
 import { useColors, Radius, Spacing } from '../../src/constants/theme';
@@ -17,7 +18,8 @@ import { useColors, Radius, Spacing } from '../../src/constants/theme';
 // type must be exactly "medical" | "safety" | "abuse" (enforced by the
 // backend controller). Live location, trusted contacts, campus security
 // integration, and the SOS button from the spec are NOT built — this
-// is a plain report-submission form only.
+// is a report-submission form plus a link to view your own past
+// reports (see emergency/my-reports.tsx), nothing more.
 
 const EMERGENCY_TYPES = [
   { value: 'medical', label: '🏥 Medical', a11yLabel: 'Medical' },
@@ -63,6 +65,14 @@ export default function EmergencyScreen() {
       <Text style={styles.title} accessibilityRole="header">
         Report an Emergency
       </Text>
+
+      <TouchableOpacity
+        onPress={() => router.push('/emergency/my-reports' as any)}
+        accessibilityRole="button"
+        accessibilityLabel="View my past reports"
+      >
+        <Text style={styles.myReportsLink}>View my reports →</Text>
+      </TouchableOpacity>
 
       <View style={styles.typeRow} accessibilityRole="radiogroup">
         {EMERGENCY_TYPES.map((t) => (
@@ -134,6 +144,12 @@ function useEmergencyStyles(colors: ReturnType<typeof useColors>) {
           fontWeight: '800',
           color: colors.text,
           marginTop: Spacing.md,
+          marginBottom: Spacing.md,
+        },
+        myReportsLink: {
+          fontSize: 13,
+          fontWeight: '600',
+          color: colors.primary,
           marginBottom: Spacing.md,
         },
         typeRow: {
