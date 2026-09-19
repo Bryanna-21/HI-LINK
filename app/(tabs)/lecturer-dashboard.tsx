@@ -1,21 +1,22 @@
 import { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { router } from 'expo-router';
 import { useAuthStore } from '../../src/store/authStore';
 import { StatusBanner } from '../../src/components/StatusBanner';
 import { useColors, Radius, Spacing } from '../../src/constants/theme';
 
-// STATUS: SHELL — this is the first screen behind the lecturer role
-// gate (see (tabs)/_layout.tsx's Tabs.Protected block). The backend
-// for every item below is confirmed real (exam CRUD + grading,
-// course management, announcements — see UNILINK-BACKEND's
-// exam.controller.js, course.controller.js). Nothing here has been
-// wired to it yet; this screen exists to prove the role-gated nav
-// itself works, not to be a finished feature.
+// STATUS: REAL — was a shell linking nowhere; now links into real
+// screens built in a later session (courses, exams, grading,
+// announcements). CATs, attendance, and timetable management are
+// deliberately not included here yet — kept out of that session's
+// scope, still real gaps on this dashboard.
 
-const COMING_SOON = [
-  { key: 'exams', title: 'Exams', desc: 'Create, edit, publish, and grade exams for your courses.' },
-  { key: 'courses', title: 'Course management', desc: 'Manage the courses you teach.' },
-  { key: 'announcements', title: 'Announcements', desc: 'Post announcements to your students.' },
+const LINKS = [
+  { key: 'courses', title: 'My Courses', desc: 'Roster, units, and assignments per course.', path: '/lecturer/courses' },
+  { key: 'exams', title: 'Exams', desc: 'Create, edit, publish, and manage exams.', path: '/lecturer/exams' },
+  { key: 'submissions', title: 'Grade Submissions', desc: 'Grade exam submissions across all your exams.', path: '/lecturer/submissions' },
+  { key: 'announcements', title: 'Announcements', desc: 'Post announcements to your students.', path: '/lecturer/announcements' },
+  { key: 'reports', title: 'Emergency Reports', desc: 'Review, respond to, and escalate reports for your courses.', path: '/lecturer/reports' },
 ] as const;
 
 export default function LecturerDashboardScreen() {
@@ -56,17 +57,20 @@ export default function LecturerDashboardScreen() {
       </Text>
       <Text style={styles.greeting}>Hi, {user?.name?.split(' ')[0] || 'there'} 👋</Text>
 
-      <StatusBanner
-        status="shell"
-        note="Backend for exams, courses, and announcements is real and already used on web — mobile screens for each are next."
-      />
+      <StatusBanner status="real" note="Courses, exams, grading, and announcements are all live." />
 
       <View style={styles.list}>
-        {COMING_SOON.map((item) => (
-          <View key={item.key} style={styles.card}>
+        {LINKS.map((item) => (
+          <TouchableOpacity
+            key={item.key}
+            style={styles.card}
+            onPress={() => router.push(item.path as any)}
+            accessibilityRole="button"
+            accessibilityLabel={item.title}
+          >
             <Text style={styles.cardTitle}>{item.title}</Text>
             <Text style={styles.cardDesc}>{item.desc}</Text>
-          </View>
+          </TouchableOpacity>
         ))}
       </View>
     </ScrollView>
