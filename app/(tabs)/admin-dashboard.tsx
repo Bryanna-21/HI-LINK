@@ -1,22 +1,23 @@
 import { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { router } from 'expo-router';
 import { useAuthStore } from '../../src/store/authStore';
 import { StatusBanner } from '../../src/components/StatusBanner';
 import { useColors, Radius, Spacing } from '../../src/constants/theme';
 
-// STATUS: SHELL — first screen behind the admin role gate (see
-// (tabs)/_layout.tsx's Tabs.Protected block). Backend for every item
-// below is confirmed real (admin/unit/university CRUD with full
-// audit logging, plus the general user directory and dashboard
-// stats added on web — see UNILINK-BACKEND's admin.controller.js).
-// Nothing here is wired yet; proves the role-gated nav works, not a
-// finished feature.
+// STATUS: REAL — was a shell linking nowhere; now links into real
+// screens built in a later session (user directory, admin
+// management, unit catalog, university creation). Audit log viewing
+// is deliberately not included: no GET endpoint to read AuditLog
+// entries exists anywhere in this backend — the write side (every
+// admin action logs one) is real, but nothing reads them back yet.
 
-const COMING_SOON = [
-  { key: 'users', title: 'User directory', desc: 'Browse and search every user, any role.' },
-  { key: 'admins', title: 'Admin management', desc: 'Create, list, update, and remove admin accounts.' },
-  { key: 'units', title: 'Units & universities', desc: 'Manage units and universities.' },
-  { key: 'audit', title: 'Audit log', desc: 'Review a record of admin actions.' },
+const LINKS = [
+  { key: 'users', title: 'Users', desc: 'Browse every user, any role.', path: '/admin/users' },
+  { key: 'admins', title: 'Admin Management', desc: 'Create, edit, and remove administrator accounts.', path: '/admin/admins' },
+  { key: 'units', title: 'Unit Catalog', desc: 'Manage the units lecturers can attach to courses.', path: '/admin/units' },
+  { key: 'universities', title: 'Universities', desc: 'Register a new university.', path: '/admin/universities' },
+  { key: 'reports', title: 'Emergency Reports', desc: 'Review, respond to, escalate, resolve, or dismiss reports.', path: '/admin/reports' },
 ] as const;
 
 export default function AdminDashboardScreen() {
@@ -57,17 +58,20 @@ export default function AdminDashboardScreen() {
       </Text>
       <Text style={styles.greeting}>Hi, {user?.name?.split(' ')[0] || 'there'} 👋</Text>
 
-      <StatusBanner
-        status="shell"
-        note="Backend for the user directory, admin/unit/university CRUD, and audit log is real and already used on web — mobile screens for each are next."
-      />
+      <StatusBanner status="real" note="User directory, admin management, and unit catalog are all live." />
 
       <View style={styles.list}>
-        {COMING_SOON.map((item) => (
-          <View key={item.key} style={styles.card}>
+        {LINKS.map((item) => (
+          <TouchableOpacity
+            key={item.key}
+            style={styles.card}
+            onPress={() => router.push(item.path as any)}
+            accessibilityRole="button"
+            accessibilityLabel={item.title}
+          >
             <Text style={styles.cardTitle}>{item.title}</Text>
             <Text style={styles.cardDesc}>{item.desc}</Text>
-          </View>
+          </TouchableOpacity>
         ))}
       </View>
     </ScrollView>
