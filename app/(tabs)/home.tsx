@@ -746,19 +746,55 @@ const Feed = forwardRef<
       {displayedPosts.length === 0 ? (
         <View style={styles.emptyFeed}>
           <Text style={styles.emptyFeedTitle}>
-            {section === 'reels'
-              ? 'No Reels yet'
-              : section === 'library'
-                ? 'Your Library is empty'
-                : 'No posts yet'}
+            {discoverySection === 'you'
+              ? section === 'reels'
+                ? 'No Reels from you yet'
+                : section === 'library'
+                  ? 'Your Library is empty'
+                  : 'No posts from you yet'
+              : discoverySection === 'school'
+                ? section === 'reels'
+                  ? 'No school Reels yet'
+                  : section === 'library'
+                    ? 'No school resources yet'
+                    : 'No school posts yet'
+                : discoverySection === 'friends'
+                  ? 'No Friends content yet'
+                  : discoverySection === 'sports'
+                    ? 'No Sports content yet'
+                    : discoverySection === 'clubs'
+                      ? 'No Clubs content yet'
+                      : section === 'reels'
+                        ? 'No Reels yet'
+                        : section === 'library'
+                          ? 'Your Library is empty'
+                          : 'No posts yet'}
           </Text>
 
           <Text style={styles.emptyFeedText}>
-            {section === 'reels'
-              ? 'Video posts will appear here.'
-              : section === 'library'
-                ? 'Notes, assignments and study resources will appear here.'
-                : 'Your latest posts will appear here.'}
+            {discoverySection === 'you'
+              ? section === 'reels'
+                ? 'Your video posts will appear here.'
+                : section === 'library'
+                  ? 'Your notes, assignments and study resources will appear here.'
+                  : 'Your latest posts will appear here.'
+              : discoverySection === 'school'
+                ? section === 'reels'
+                  ? 'Video posts from your school will appear here.'
+                  : section === 'library'
+                    ? 'Notes, assignments and study resources from your school will appear here.'
+                    : 'Posts from your school community will appear here.'
+                : discoverySection === 'friends'
+                  ? 'Connect with friends to see their posts, Reels and shared resources here.'
+                  : discoverySection === 'sports'
+                    ? 'Sports content will appear here when Sports communities and posts are available.'
+                    : discoverySection === 'clubs'
+                      ? 'Club content will appear here when Clubs communities and posts are available.'
+                      : section === 'reels'
+                        ? 'Video posts will appear here.'
+                        : section === 'library'
+                          ? 'Notes, assignments and study resources will appear here.'
+                          : 'Your latest posts will appear here.'}
           </Text>
         </View>
       ) : (
