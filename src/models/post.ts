@@ -1,0 +1,82 @@
+export type PostType =
+  | 'text'
+  | 'photo'
+  | 'video'
+  | 'document'
+  | 'question'
+  | 'study_resource'
+  | 'event';
+
+export type PostVisibility =
+  | 'everyone'
+  | 'my_school'
+  | 'my_class'
+  | 'my_group';
+
+export interface PostAttachment {
+  uri: string;
+  name?: string;
+  mimeType?: string;
+  size?: number;
+  width?: number;
+  height?: number;
+}
+
+export interface Post {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorUsername: string;
+  authorAvatarUri?: string;
+
+  type: PostType;
+  text?: string;
+
+  attachment?: PostAttachment;
+
+  schoolId?: string;
+  schoolName?: string;
+  form?: string;
+  stream?: string;
+
+  subject?: string;
+  resourceType?: string;
+
+  /**
+   * User-selected discovery tags.
+   * Stored without the leading #.
+   */
+  tags?: string[];
+
+  /**
+   * Optional moderation/safety metadata.
+   */
+  contentWarning?: boolean;
+
+  /**
+   * Whether other users may comment on this post.
+   * Defaults to true for existing posts.
+   */
+  commentsAllowed?: boolean;
+
+  /**
+   * Whether the attachment may be downloaded/saved.
+   * Defaults to true for existing posts.
+   */
+  allowDownload?: boolean;
+
+  visibility: PostVisibility;
+
+  likes: number;
+  comments: number;
+  shares: number;
+  saves: number;
+
+  createdAt: string;
+  updatedAt: string;
+
+  /**
+   * Set only when the post has been edited after publishing.
+   */
+  editedAt?: string;
+}

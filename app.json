@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "UniLink",
+    "name": "Hi-Link",
     "slug": "unilink-mobile",
     "version": "0.1.0",
     "orientation": "portrait",
@@ -27,13 +27,14 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/splash-icon.png",
+          "image": "./assets/splash.png",
           "imageWidth": 220,
           "backgroundColor": "#0B6BFF"
         }
       ],
       "expo-video",
-      "expo-localization"
+      "expo-localization",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true
