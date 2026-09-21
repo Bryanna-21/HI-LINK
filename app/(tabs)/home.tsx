@@ -1,3 +1,4 @@
+import { HiLinkUser } from '../../src/models/user';
 import {
   forwardRef,
   useCallback,
@@ -67,7 +68,7 @@ const COLORS = {
 
 type HomeFeedSection = 'reels' | 'library' | 'feed';
 type HomeDiscoverySection =
-  | 'for_you'
+  | 'you'
   | 'friends'
   | 'school'
   | 'sports'
@@ -86,7 +87,7 @@ export default function HomeScreen() {
     useState<HomeFeedSection>('feed');
 
   const [discoverySection, setDiscoverySection] =
-    useState<HomeDiscoverySection>('for_you');
+    useState<HomeDiscoverySection>('you');
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [seenCounts, setSeenCounts] = useState({
@@ -248,7 +249,7 @@ export default function HomeScreen() {
           contentContainerStyle={styles.stories}
         >
           {[
-            ['for_you', 'You'],
+            ['you', 'You'],
             ['friends', 'Friends'],
             ['school', 'School'],
             ['sports', 'Sports'],
@@ -377,6 +378,7 @@ export default function HomeScreen() {
           ref={feedRef}
           onRefresh={() => loadFeed()}
           section={feedSection}
+          discoverySection={discoverySection}
         />
       </ScrollView>
     </SafeAreaView>
@@ -393,18 +395,35 @@ const Feed = forwardRef<
   {
     onRefresh: () => Promise<Post[]>;
     section: HomeFeedSection;
+    discoverySection: HomeDiscoverySection;
   }
 >(function Feed(
   {
     onRefresh,
     section,
+    discoverySection,
   },
   ref,
 ) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [identity, setIdentity] = useState<HiLinkUser | null>(null);
   const [activeVideoPostId, setActiveVideoPostId] =
     useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    void getIdentity().then((currentIdentity) => {
+      if (mounted) {
+        setIdentity(currentIdentity);
+      }
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const videoVisibilityRef =
     useRef<
@@ -684,25 +703,43 @@ const Feed = forwardRef<
     );
   }
 
-  const displayedPosts =
-    section === 'reels'
-      ? posts.filter(
-          (post) => post.type === 'video',
-        )
-      : section === 'library'
-        ? posts.filter(
-            (post) =>
-              post.type === 'document' ||
-              post.type === 'study_resource' ||
-              post.type === 'question',
-          )
-        : posts.filter(
-            (post) =>
-              post.type !== 'video' &&
-              post.type !== 'document' &&
-              post.type !== 'study_resource' &&
-              post.type !== 'question',
-          );
+  const displayedPosts = posts.filter((post) => {
+    const matchesContentSection =
+      section === 'reels'
+        ? post.type === 'video'
+        : section === 'library'
+          ? post.type === 'document' ||
+            post.type === 'study_resource' ||
+            post.type === 'question'
+          : post.type !== 'video' &&
+            post.type !== 'document' &&
+            post.type !== 'study_resource' &&
+            post.type !== 'question';
+
+    if (!matchesContentSection) {
+      return false;
+    }
+
+    switch (discoverySection) {
+      case 'you':
+        return identity?.id === post.authorId;
+
+      case 'school':
+        return Boolean(
+          identity?.schoolId &&
+          post.schoolId &&
+          identity.schoolId === post.schoolId,
+        );
+
+      case 'friends':
+      case 'sports':
+      case 'clubs':
+        return false;
+
+      default:
+        return true;
+    }
+  });
 
   return (
     <View>
