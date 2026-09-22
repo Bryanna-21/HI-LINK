@@ -1,4 +1,6 @@
 import {
+  Alert,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,8 +17,22 @@ const C = {
 };
 
 export default function ChatsScreen() {
+  function handleNewChat() {
+    Alert.alert(
+      'Start a conversation',
+      'Choose what you want to create.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'New chat', onPress: () => {} },
+        { text: 'New group', onPress: () => {} },
+        { text: 'Find people', onPress: () => {} },
+      ],
+    );
+  }
+
   return (
-    <ScrollView
+    <View style={styles.screen}>
+      <ScrollView
       style={styles.screen}
       contentContainerStyle={styles.content}
     >
@@ -32,7 +48,17 @@ export default function ChatsScreen() {
           Your chats will appear here when you connect with people.
         </Text>
       </View>
-    </ScrollView>
+      </ScrollView>
+
+      <Pressable
+        style={styles.addButton}
+        onPress={handleNewChat}
+        accessibilityRole="button"
+        accessibilityLabel="Start a new chat"
+      >
+        <Text style={styles.addButtonText}>+</Text>
+      </Pressable>
+    </View>
   );
 }
 
@@ -61,6 +87,29 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     marginTop: 12,
+  },
+  addButton: {
+    position: 'absolute',
+    left: 20,
+    bottom: 92,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: C.green,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 8,
+    shadowColor: '#000000',
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  addButtonText: {
+    color: C.bg,
+    fontSize: 34,
+    lineHeight: 38,
+    fontWeight: '300',
+    marginTop: -2,
   },
   emptyBody: {
     color: C.muted,
