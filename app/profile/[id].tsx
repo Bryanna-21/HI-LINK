@@ -619,35 +619,35 @@ export default function ProfileScreen() {
             ) : null}
           </View>
 
-          {(user.faculty ||
-            user.course ||
-            user.yearOfStudy) ? (
+          {(user.schoolName ||
+            user.form ||
+            user.stream) ? (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>
                 Academic profile
               </Text>
 
-              {user.faculty ? (
+              {user.schoolName ? (
                 <InfoRow
                   icon="business-outline"
-                  label="Faculty"
-                  value={user.faculty}
+                  label="School"
+                  value={user.schoolName}
                 />
               ) : null}
 
-              {user.course ? (
+              {user.form ? (
                 <InfoRow
                   icon="school-outline"
-                  label="Course"
-                  value={user.course}
+                  label="Form"
+                  value={user.form}
                 />
               ) : null}
 
-              {user.yearOfStudy ? (
+              {user.stream ? (
                 <InfoRow
-                  icon="calendar-outline"
-                  label="Year of study"
-                  value={user.yearOfStudy}
+                  icon="people-outline"
+                  label="Stream"
+                  value={user.stream}
                 />
               ) : null}
             </View>

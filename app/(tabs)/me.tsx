@@ -668,35 +668,35 @@ export default function MeScreen() {
                 ) : null}
               </View>
 
-              {(identity?.faculty ||
-                identity?.course ||
-                identity?.yearOfStudy) ? (
+              {(identity?.schoolName ||
+                identity?.form ||
+                identity?.stream) ? (
                 <View style={styles.profileSection}>
                   <Text style={styles.sectionTitle}>
                     Academic profile
                   </Text>
 
-                  {identity.faculty ? (
+                  {identity.schoolName ? (
                     <ProfileInfo
                       icon="business-outline"
-                      label="Faculty"
-                      value={identity.faculty}
+                      label="School"
+                      value={identity.schoolName}
                     />
                   ) : null}
 
-                  {identity.course ? (
+                  {identity.form ? (
                     <ProfileInfo
                       icon="school-outline"
-                      label="Course"
-                      value={identity.course}
+                      label="Form"
+                      value={identity.form}
                     />
                   ) : null}
 
-                  {identity.yearOfStudy ? (
+                  {identity.stream ? (
                     <ProfileInfo
-                      icon="calendar-outline"
-                      label="Year of study"
-                      value={identity.yearOfStudy}
+                      icon="people-outline"
+                      label="Stream"
+                      value={identity.stream}
                     />
                   ) : null}
                 </View>

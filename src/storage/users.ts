@@ -124,9 +124,6 @@ export async function getKnownUsers(): Promise<HiLinkUser[]> {
       schoolName:
         existing?.schoolName ??
         post.schoolName,
-      faculty: existing?.faculty,
-      course: existing?.course,
-      yearOfStudy: existing?.yearOfStudy,
       clubs: existing?.clubs,
       societies: existing?.societies,
       interests: existing?.interests,

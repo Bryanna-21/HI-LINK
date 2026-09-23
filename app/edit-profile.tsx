@@ -57,15 +57,13 @@ export default function EditProfile() {
   const [username, setUsername] = useState('');
   const [bio, setBio] = useState('');
 
-  const [faculty, setFaculty] = useState('');
-  const [course, setCourse] = useState('');
-  const [yearOfStudy, setYearOfStudy] = useState('');
+  const [schoolName, setSchoolName] = useState('');
+  const [form, setForm] = useState('');
+  const [stream, setStream] = useState('');
   const [clubs, setClubs] = useState('');
   const [societies, setSocieties] = useState('');
   const [interests, setInterests] = useState('');
 
-  const [form, setForm] = useState('');
-  const [stream, setStream] = useState('');
   const [house, setHouse] = useState('');
   const [studentType, setStudentType] =
     useState<StudentType>('unknown');
@@ -95,15 +93,13 @@ export default function EditProfile() {
     setUsername(user.username ?? '');
     setBio(user.bio ?? '');
 
-    setFaculty(user.faculty ?? '');
-    setCourse(user.course ?? '');
-    setYearOfStudy(user.yearOfStudy ?? '');
+    setSchoolName(user.schoolName ?? '');
+    setForm(user.form ?? '');
+    setStream(user.stream ?? '');
     setClubs((user.clubs ?? []).join(', '));
     setSocieties((user.societies ?? []).join(', '));
     setInterests((user.interests ?? []).join(', '));
 
-    setForm(user.form ?? '');
-    setStream(user.stream ?? '');
     setHouse(user.house ?? '');
 
     setStudentType(user.boardingStatus ?? 'unknown');
@@ -187,9 +183,9 @@ export default function EditProfile() {
         username: cleanUsername,
         bio: bio.trim() || undefined,
 
-        faculty: faculty.trim() || undefined,
-        course: course.trim() || undefined,
-        yearOfStudy: yearOfStudy.trim() || undefined,
+        schoolName: schoolName.trim() || undefined,
+        form: form.trim() || undefined,
+        stream: stream.trim() || undefined,
 
         clubs: clubs
           .split(',')
@@ -205,12 +201,6 @@ export default function EditProfile() {
           .split(',')
           .map((item) => item.trim())
           .filter(Boolean),
-
-        form: form || undefined,
-        stream:
-          stream === 'None'
-            ? undefined
-            : stream || undefined,
 
         house: house || undefined,
 
@@ -396,25 +386,25 @@ export default function EditProfile() {
 
         <Section title="Academic profile">
           <Field
-            label="Faculty"
-            value={faculty}
-            onChangeText={setFaculty}
-            placeholder="e.g. Faculty of Computing"
+            label="School"
+            value={schoolName}
+            onChangeText={setSchoolName}
+            placeholder="e.g. Kabarak High School"
             maxLength={100}
           />
 
           <Field
-            label="Course"
-            value={course}
-            onChangeText={setCourse}
+            label="Form"
+            value={form}
+            onChangeText={setForm}
             placeholder="e.g. BSc Computer Science"
             maxLength={100}
           />
 
           <Field
-            label="Year of study"
-            value={yearOfStudy}
-            onChangeText={setYearOfStudy}
+            label="Stream"
+            value={stream}
+            onChangeText={setStream}
             placeholder="e.g. Year 2"
             maxLength={30}
           />

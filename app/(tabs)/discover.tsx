@@ -71,8 +71,9 @@ export default function DiscoverScreen() {
         user.name,
         user.username,
         user.schoolName,
-        user.course,
-        user.faculty,
+        user.form,
+        user.stream,
+        user.schoolName,
       ]
         .filter(Boolean)
         .some((value) =>
@@ -199,7 +200,7 @@ export default function DiscoverScreen() {
 
           <Text style={styles.emptyText}>
             {query.trim()
-              ? 'Try another name, username, school or course.'
+              ? 'Try another name, username, school, form or stream.'
               : 'People will appear here as HI-LINK users become known locally.'}
           </Text>
         </View>
