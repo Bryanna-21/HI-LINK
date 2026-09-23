@@ -13,7 +13,7 @@ import { getLocal, setLocal } from './localStore';
 const STORAGE_KEY = 'hilink.academic.v1';
 const now = () => new Date().toISOString();
 
-const createDefaultStore = (): AcademicStore => ({
+export const createDefaultStore = (): AcademicStore => ({
   subjects: [],
   competencies: [],
   values: [],
@@ -60,12 +60,34 @@ export async function upsertAcademicSubject(subject: AcademicSubject) {
   return subject;
 }
 
+export async function deleteAcademicSubject(id: string) {
+  return updateStore((store) => ({
+    ...store,
+    subjects: store.subjects.filter((item) => item.id !== id),
+    settings: {
+      ...store.settings,
+      selectedSubjectIds: store.settings.selectedSubjectIds.filter((item) => item !== id),
+    },
+  }));
+}
+
 export async function upsertAcademicCompetency(competency: AcademicCompetency) {
   await updateStore((store) => ({
     ...store,
     competencies: [...store.competencies.filter((item) => item.id !== competency.id), competency],
   }));
   return competency;
+}
+
+export async function deleteAcademicCompetency(id: string) {
+  return updateStore((store) => ({
+    ...store,
+    competencies: store.competencies.filter((item) => item.id !== id),
+    learningOutcomes: store.learningOutcomes.map((item) => ({
+      ...item,
+      competencyIds: item.competencyIds?.filter((value) => value !== id),
+    })),
+  }));
 }
 
 export async function upsertAcademicValue(value: AcademicValue) {
@@ -76,12 +98,30 @@ export async function upsertAcademicValue(value: AcademicValue) {
   return value;
 }
 
+export async function deleteAcademicValue(id: string) {
+  return updateStore((store) => ({
+    ...store,
+    values: store.values.filter((item) => item.id !== id),
+    learningOutcomes: store.learningOutcomes.map((item) => ({
+      ...item,
+      valueIds: item.valueIds?.filter((value) => value !== id),
+    })),
+  }));
+}
+
 export async function upsertLearningOutcome(outcome: LearningOutcome) {
   await updateStore((store) => ({
     ...store,
     learningOutcomes: [...store.learningOutcomes.filter((item) => item.id !== outcome.id), outcome],
   }));
   return outcome;
+}
+
+export async function deleteLearningOutcome(id: string) {
+  return updateStore((store) => ({
+    ...store,
+    learningOutcomes: store.learningOutcomes.filter((item) => item.id !== id),
+  }));
 }
 
 export async function upsertAcademicResource(resource: AcademicResource) {
@@ -92,12 +132,26 @@ export async function upsertAcademicResource(resource: AcademicResource) {
   return resource;
 }
 
+export async function deleteAcademicResource(id: string) {
+  return updateStore((store) => ({
+    ...store,
+    resources: store.resources.filter((item) => item.id !== id),
+  }));
+}
+
 export async function upsertAcademicAssessment(assessment: AcademicAssessment) {
   await updateStore((store) => ({
     ...store,
     assessments: [...store.assessments.filter((item) => item.id !== assessment.id), assessment],
   }));
   return assessment;
+}
+
+export async function deleteAcademicAssessment(id: string) {
+  return updateStore((store) => ({
+    ...store,
+    assessments: store.assessments.filter((item) => item.id !== id),
+  }));
 }
 
 export async function updateAcademicSettings(patch: Partial<AcademicSettings>) {
