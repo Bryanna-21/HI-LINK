@@ -1,21 +1,88 @@
 import {
+  ActivityIndicator,
+  Image,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 
-const C = {
-  bg: '#070908',
-  card: '#101512',
-  border: '#242C27',
-  white: '#F8FAF8',
-  muted: '#8D9991',
-  green: '#19E68C',
-  blue: '#2F80FF',
-};
+import { HiLinkUser } from '../../src/models/user';
+import { getIdentity } from '../../src/storage/identity';
+import { getKnownUsers } from '../../src/storage/users';
+import {
+  ThemeColors,
+  useTheme,
+} from '../../src/theme/ThemeProvider';
 
 export default function DiscoverScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
+  const [users, setUsers] = useState<HiLinkUser[]>([]);
+  const [query, setQuery] = useState('');
+  const [identityId, setIdentityId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const loadUsers = useCallback(async () => {
+    try {
+      const [identity, knownUsers] =
+        await Promise.all([
+          getIdentity(),
+          getKnownUsers(),
+        ]);
+
+      setIdentityId(identity?.id ?? null);
+
+      setUsers(
+        knownUsers.filter(
+          (user) => user.id !== identity?.id,
+        ),
+      );
+    } catch (error) {
+      console.error(
+        'Load Discover users failed:',
+        error,
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadUsers();
+  }, [loadUsers]);
+
+  const filteredUsers = useMemo(() => {
+    const normalized =
+      query.trim().toLowerCase();
+
+    if (!normalized) {
+      return users;
+    }
+
+    return users.filter((user) =>
+      [
+        user.name,
+        user.username,
+        user.schoolName,
+        user.course,
+        user.faculty,
+      ]
+        .filter(Boolean)
+        .some((value) =>
+          value!
+            .toLowerCase()
+            .includes(normalized),
+        ),
+    );
+  }, [query, users]);
+
   return (
     <ScrollView
       style={styles.screen}
@@ -23,15 +90,124 @@ export default function DiscoverScreen() {
       showsVerticalScrollIndicator={false}
     >
       <Text style={styles.title}>Discover</Text>
+
       <Text style={styles.subtitle}>
         Find people, schools, clubs and things happening around you.
       </Text>
 
       <View style={styles.search}>
-        <Text style={styles.searchText}>Search Hi-Link</Text>
+        <Ionicons
+          name="search-outline"
+          size={19}
+          color={colors.muted}
+        />
+
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Search Hi-Link"
+          placeholderTextColor={colors.muted}
+          style={styles.searchInput}
+          autoCapitalize="none"
+          autoCorrect={false}
+          returnKeyType="search"
+        />
       </View>
 
-      <Text style={styles.section}>Explore</Text>
+      <Text style={styles.section}>
+        People
+      </Text>
+
+      {loading ? (
+        <View style={styles.loading}>
+          <ActivityIndicator
+            size="small"
+            color={colors.accent}
+          />
+
+          <Text style={styles.loadingText}>
+            Loading people...
+          </Text>
+        </View>
+      ) : filteredUsers.length > 0 ? (
+        filteredUsers.map((user) => (
+          <Pressable
+            key={user.id}
+            style={styles.personCard}
+            onPress={() =>
+              router.push({
+                pathname: '/profile/[id]',
+                params: { id: user.id },
+              })
+            }
+          >
+            <View style={styles.avatar}>
+              {user.avatarUri ? (
+                <Image
+                  source={{ uri: user.avatarUri }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <Text style={styles.avatarText}>
+                  {user.name
+                    .trim()
+                    .charAt(0)
+                    .toUpperCase() || '?'}
+                </Text>
+              )}
+            </View>
+
+            <View style={styles.personText}>
+              <Text style={styles.personName}>
+                {user.name}
+              </Text>
+
+              <Text style={styles.personUsername}>
+                @{user.username}
+              </Text>
+
+              {user.schoolName ? (
+                <Text
+                  style={styles.personMeta}
+                  numberOfLines={1}
+                >
+                  {user.schoolName}
+                </Text>
+              ) : null}
+            </View>
+
+            <Ionicons
+              name="chevron-forward-outline"
+              size={19}
+              color={colors.muted}
+            />
+          </Pressable>
+        ))
+      ) : (
+        <View style={styles.empty}>
+          <Ionicons
+            name="people-outline"
+            size={32}
+            color={colors.muted}
+          />
+
+          <Text style={styles.emptyTitle}>
+            {query.trim()
+              ? 'No people found'
+              : 'No other people yet'}
+          </Text>
+
+          <Text style={styles.emptyText}>
+            {query.trim()
+              ? 'Try another name, username, school or course.'
+              : 'People will appear here as HI-LINK users become known locally.'}
+          </Text>
+        </View>
+      )}
+
+      <Text style={styles.section}>
+        Explore
+      </Text>
 
       {[
         ['Schools', 'Discover school communities', 'school-outline'],
@@ -48,14 +224,27 @@ export default function DiscoverScreen() {
                 : styles.blueIcon,
             ]}
           >
-            <Text style={styles.iconText}>
-              {index === 0 ? 'S' : index === 1 ? 'C' : index === 2 ? '⚽' : '📚'}
-            </Text>
+            <Ionicons
+              name={description === 'Follow teams and sports'
+                ? 'football-outline'
+                : index === 0
+                  ? 'school-outline'
+                  : index === 1
+                    ? 'people-outline'
+                    : 'book-outline'}
+              size={21}
+              color={colors.text}
+            />
           </View>
 
           <View style={styles.cardText}>
-            <Text style={styles.cardTitle}>{title}</Text>
-            <Text style={styles.cardBody}>{description}</Text>
+            <Text style={styles.cardTitle}>
+              {title}
+            </Text>
+
+            <Text style={styles.cardBody}>
+              {description}
+            </Text>
           </View>
 
           <Text style={styles.arrow}>›</Text>
@@ -65,42 +254,125 @@ export default function DiscoverScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: C.bg,
+    backgroundColor: colors.background,
   },
   content: {
     padding: 20,
     paddingBottom: 110,
   },
   title: {
-    color: C.white,
+    color: colors.text,
     fontSize: 28,
     fontWeight: '900',
   },
   subtitle: {
-    color: C.muted,
+    color: colors.muted,
     fontSize: 14,
     lineHeight: 21,
     marginTop: 7,
   },
   search: {
-    height: 50,
+    minHeight: 50,
     borderRadius: 15,
-    backgroundColor: C.card,
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: C.border,
-    justifyContent: 'center',
+    borderColor: colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     marginTop: 22,
   },
-  searchText: {
-    color: C.muted,
+  searchInput: {
+    flex: 1,
+    color: colors.text,
     fontSize: 14,
+    marginLeft: 9,
+    paddingVertical: 0,
+  },
+  loading: {
+    minHeight: 90,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  loadingText: {
+    color: colors.muted,
+    fontSize: 13,
+  },
+  personCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 13,
+    marginBottom: 10,
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.accentSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarText: {
+    color: colors.accent,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  personText: {
+    flex: 1,
+    marginLeft: 13,
+    minWidth: 0,
+  },
+  personName: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  personUsername: {
+    color: colors.accent,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  personMeta: {
+    color: colors.muted,
+    fontSize: 11,
+    marginTop: 4,
+  },
+  empty: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 24,
+    alignItems: 'center',
+  },
+  emptyTitle: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '800',
+    marginTop: 10,
+  },
+  emptyText: {
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
+    marginTop: 5,
   },
   section: {
-    color: C.white,
+    color: colors.text,
     fontSize: 19,
     fontWeight: '800',
     marginTop: 28,
@@ -109,10 +381,10 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: C.card,
+    backgroundColor: colors.card,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: colors.border,
     padding: 15,
     marginBottom: 10,
   },
@@ -124,13 +396,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   greenIcon: {
-    backgroundColor: '#123B2A',
+    backgroundColor: colors.accentSoft,
   },
   blueIcon: {
-    backgroundColor: '#122747',
+    backgroundColor: colors.blueSoft,
   },
   iconText: {
-    color: C.white,
+    color: colors.text,
     fontSize: 18,
     fontWeight: '900',
   },
@@ -139,17 +411,17 @@ const styles = StyleSheet.create({
     marginLeft: 13,
   },
   cardTitle: {
-    color: C.white,
+    color: colors.text,
     fontSize: 16,
     fontWeight: '800',
   },
   cardBody: {
-    color: C.muted,
+    color: colors.muted,
     fontSize: 12,
     marginTop: 4,
   },
   arrow: {
-    color: C.muted,
+    color: colors.muted,
     fontSize: 28,
     marginLeft: 8,
   },

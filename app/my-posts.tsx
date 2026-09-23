@@ -10,12 +10,16 @@ import {
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-import { colors } from '../src/theme/colors';
+import { ThemeColors, useTheme } from '../src/theme/ThemeProvider';
 import { Post } from '../src/models/post';
 import { getIdentity } from '../src/storage/identity';
 import { getPostsByAuthor } from '../src/storage/posts';
+import HiLinkVideoPlayer from '../src/components/HiLinkVideoPlayer';
 
 export default function MyPostsScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -54,7 +58,7 @@ export default function MyPostsScreen() {
             <Ionicons
               name="person"
               size={20}
-              color={colors.exileGreen}
+              color={colors.accent}
             />
           </View>
 
@@ -73,6 +77,26 @@ export default function MyPostsScreen() {
           <Text style={styles.postText}>
             {item.text}
           </Text>
+        ) : null}
+
+        {item.type === 'video' &&
+        item.attachment?.uri ? (
+          <View style={styles.postVideo}>
+            <HiLinkVideoPlayer
+              uri={item.attachment.uri}
+              postId={item.id}
+              width={item.attachment.width}
+              height={item.attachment.height}
+              onFullscreen={() =>
+                router.push({
+                  pathname: '/video/[id]',
+                  params: {
+                    id: item.id,
+                  },
+                })
+              }
+            />
+          </View>
         ) : null}
 
         <View style={styles.postMeta}>
@@ -111,7 +135,7 @@ export default function MyPostsScreen() {
       <View style={styles.loading}>
         <ActivityIndicator
           size="large"
-          color={colors.exileGreen}
+          color={colors.accent}
         />
       </View>
     );
@@ -123,7 +147,7 @@ export default function MyPostsScreen() {
         <Ionicons
           name="arrow-back"
           size={24}
-          color={colors.white}
+          color={colors.text}
           onPress={() => router.back()}
         />
 
@@ -146,7 +170,7 @@ export default function MyPostsScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={refresh}
-            tintColor={colors.exileGreen}
+            tintColor={colors.accent}
           />
         }
         ListEmptyComponent={
@@ -155,7 +179,7 @@ export default function MyPostsScreen() {
               <Ionicons
                 name="images-outline"
                 size={34}
-                color={colors.exileGreen}
+                color={colors.accent}
               />
             </View>
 
@@ -209,7 +233,7 @@ function formatDate(value: string) {
   });
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -234,7 +258,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     flex: 1,
     marginLeft: 16,
-    color: colors.white,
+    color: colors.text,
     fontSize: 20,
     fontWeight: '800',
   },
@@ -265,14 +289,14 @@ const styles = StyleSheet.create({
     borderRadius: 38,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.charcoal,
+    backgroundColor: colors.cardRaised,
     borderWidth: 1,
     borderColor: colors.border,
     marginBottom: 18,
   },
 
   emptyTitle: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 21,
     fontWeight: '800',
     marginBottom: 8,
@@ -302,7 +326,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: colors.charcoal2,
+    backgroundColor: colors.cardRaised,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -312,7 +336,7 @@ const styles = StyleSheet.create({
   },
 
   authorName: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 15,
     fontWeight: '800',
   },
@@ -324,10 +348,17 @@ const styles = StyleSheet.create({
   },
 
   postText: {
-    color: colors.whiteMuted,
+    color: colors.textSecondary,
     fontSize: 16,
     lineHeight: 23,
     marginTop: 14,
+  },
+
+  postVideo: {
+    marginTop: 12,
+    borderRadius: 14,
+    overflow: 'hidden',
+    backgroundColor: '#000000',
   },
 
   postMeta: {
@@ -337,7 +368,7 @@ const styles = StyleSheet.create({
   },
 
   postType: {
-    color: colors.exileGreen,
+    color: colors.accent,
     fontSize: 12,
     fontWeight: '800',
   },

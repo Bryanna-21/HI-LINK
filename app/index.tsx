@@ -2,10 +2,13 @@ import { useEffect, useState } from 'react';
 import { Redirect } from 'expo-router';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
-import { colors } from '../src/theme/colors';
+import { ThemeColors, useTheme } from '../src/theme/ThemeProvider';
 import { isOnboardingComplete } from '../src/storage/onboarding';
 
 export default function Index() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   const [loading, setLoading] = useState(true);
   const [complete, setComplete] = useState(false);
 
@@ -25,7 +28,7 @@ export default function Index() {
       <View style={styles.loading}>
         <ActivityIndicator
           size="large"
-          color={colors.exileGreen}
+          color={colors.accent}
         />
       </View>
     );
@@ -38,7 +41,7 @@ export default function Index() {
   return <Redirect href="/onboarding" />;
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   loading: {
     flex: 1,
     backgroundColor: colors.background,

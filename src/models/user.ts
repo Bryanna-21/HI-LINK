@@ -22,6 +22,17 @@ export interface HiLinkUser {
   schoolId?: string;
   schoolName?: string;
 
+  faculty?: string;
+  course?: string;
+  yearOfStudy?: string;
+
+  clubs?: string[];
+  societies?: string[];
+  interests?: string[];
+
+  followersCount?: number;
+  followingCount?: number;
+
   admissionNumber?: string;
   studentId?: string;
   staffNumber?: string;

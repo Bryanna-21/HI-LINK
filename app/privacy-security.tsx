@@ -18,7 +18,7 @@ import {
 } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-import { colors } from '../src/theme/colors';
+import { ThemeColors, useTheme } from '../src/theme/ThemeProvider';
 import { getPosts } from '../src/storage/posts';
 import { getBlockedUserIds, unblockUser } from '../src/storage/blockedUsers';
 import { getHiddenPostIds, unhidePost } from '../src/storage/hiddenPosts';
@@ -30,6 +30,9 @@ type BlockedEntry = {
 };
 
 export default function PrivacySecurityScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   const [blockedUsers, setBlockedUsers] =
     useState<BlockedEntry[]>([]);
   const [hiddenPosts, setHiddenPosts] =
@@ -172,7 +175,7 @@ export default function PrivacySecurityScreen() {
             <Ionicons
               name="arrow-back"
               size={24}
-              color={colors.white}
+              color={colors.text}
             />
           </Pressable>
 
@@ -192,7 +195,7 @@ export default function PrivacySecurityScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={refresh}
-              tintColor={colors.exileGreen}
+              tintColor={colors.accent}
             />
           }
         >
@@ -200,7 +203,7 @@ export default function PrivacySecurityScreen() {
             <Ionicons
               name="shield-checkmark"
               size={25}
-              color={colors.exileGreen}
+              color={colors.accent}
             />
 
             <View style={styles.infoText}>
@@ -247,7 +250,7 @@ export default function PrivacySecurityScreen() {
                   <Ionicons
                     name="person"
                     size={19}
-                    color={colors.exileGreen}
+                    color={colors.accent}
                   />
                 </View>
 
@@ -316,7 +319,7 @@ export default function PrivacySecurityScreen() {
                   <Ionicons
                     name="eye-off-outline"
                     size={20}
-                    color={colors.exileBlue}
+                    color={colors.blue}
                   />
                 </View>
 
@@ -357,7 +360,7 @@ export default function PrivacySecurityScreen() {
             <Ionicons
               name="lock-closed-outline"
               size={21}
-              color={colors.exileBlue}
+              color={colors.blue}
             />
 
             <View style={styles.infoText}>
@@ -378,7 +381,7 @@ export default function PrivacySecurityScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,
@@ -412,7 +415,7 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 20,
     fontWeight: '700',
   },
@@ -456,7 +459,7 @@ const styles = StyleSheet.create({
   },
 
   infoTitle: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 15,
     fontWeight: '700',
   },
@@ -469,7 +472,7 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 17,
     fontWeight: '700',
     marginBottom: 10,
@@ -486,7 +489,7 @@ const styles = StyleSheet.create({
   },
 
   emptyTitle: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 15,
     fontWeight: '700',
     marginTop: 9,
@@ -514,7 +517,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: colors.charcoal2,
+    backgroundColor: colors.cardRaised,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -523,7 +526,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 12,
-    backgroundColor: colors.charcoal2,
+    backgroundColor: colors.cardRaised,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -534,7 +537,7 @@ const styles = StyleSheet.create({
   },
 
   rowTitle: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -554,7 +557,7 @@ const styles = StyleSheet.create({
   },
 
   actionText: {
-    color: colors.exileGreen,
+    color: colors.accent,
     fontSize: 12,
     fontWeight: '700',
   },

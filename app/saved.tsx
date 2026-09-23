@@ -10,7 +10,7 @@ import {
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-import { colors } from '../src/theme/colors';
+import { ThemeColors, useTheme } from '../src/theme/ThemeProvider';
 import { Post } from '../src/models/post';
 import { getPosts } from '../src/storage/posts';
 import {
@@ -19,6 +19,9 @@ import {
 } from '../src/storage/savedPosts';
 
 export default function SavedScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -67,7 +70,7 @@ export default function SavedScreen() {
       <View style={styles.center}>
         <ActivityIndicator
           size="large"
-          color={colors.exileGreen}
+          color={colors.accent}
         />
       </View>
     );
@@ -80,7 +83,7 @@ export default function SavedScreen() {
           <Ionicons
             name="bookmark"
             size={24}
-            color={colors.exileGreen}
+            color={colors.accent}
           />
 
           <Text style={styles.title}>
@@ -100,7 +103,7 @@ export default function SavedScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={refresh}
-            tintColor={colors.exileGreen}
+            tintColor={colors.accent}
           />
         }
         contentContainerStyle={
@@ -125,7 +128,7 @@ export default function SavedScreen() {
                           : 'chatbubble-outline'
                   }
                   size={22}
-                  color={colors.exileGreen}
+                  color={colors.accent}
                 />
               </View>
 
@@ -145,7 +148,7 @@ export default function SavedScreen() {
               <Ionicons
                 name="bookmark"
                 size={20}
-                color={colors.exileGreen}
+                color={colors.accent}
               />
             </View>
 
@@ -181,7 +184,7 @@ export default function SavedScreen() {
               <Ionicons
                 name="bookmark-outline"
                 size={36}
-                color={colors.exileGreen}
+                color={colors.accent}
               />
             </View>
 
@@ -201,7 +204,7 @@ export default function SavedScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -233,7 +236,7 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 20,
     fontWeight: '700',
   },
@@ -271,7 +274,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#123B2A',
+    backgroundColor: colors.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -282,7 +285,7 @@ const styles = StyleSheet.create({
   },
 
   author: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 15,
     fontWeight: '700',
   },
@@ -295,7 +298,7 @@ const styles = StyleSheet.create({
   },
 
   text: {
-    color: colors.whiteMuted,
+    color: colors.muted,
     fontSize: 15,
     lineHeight: 21,
     marginTop: 14,
@@ -317,7 +320,7 @@ const styles = StyleSheet.create({
   },
 
   remove: {
-    color: colors.red,
+    color: colors.danger,
     fontSize: 13,
     fontWeight: '700',
   },
@@ -333,14 +336,14 @@ const styles = StyleSheet.create({
     width: 76,
     height: 76,
     borderRadius: 38,
-    backgroundColor: '#123B2A',
+    backgroundColor: colors.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 18,
   },
 
   emptyTitle: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 20,
     fontWeight: '700',
     textAlign: 'center',
