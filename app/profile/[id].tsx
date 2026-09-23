@@ -273,6 +273,7 @@ export default function ProfileScreen() {
           .slice(2, 8)}`,
         type: 'direct',
         category: 'normal',
+        ownerId: identity.id,
         participants: [
           {
             id: identity.id,

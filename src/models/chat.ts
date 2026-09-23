@@ -47,6 +47,7 @@ export interface Conversation {
   id: string;
   type: ConversationType;
   category: ConversationCategory;
+  ownerId?: string;
   title?: string;
   avatarUri?: string;
   participants: ChatParticipant[];

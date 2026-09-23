@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -165,6 +166,7 @@ export default function NewChatScreen() {
           .slice(2, 8)}`,
         type: 'direct',
         category: 'normal',
+        ownerId: identity.id,
         participants: [
           {
             id: identity.id,
@@ -306,15 +308,24 @@ export default function NewChatScreen() {
                 <View
                   style={styles.avatar}
                 >
-                  <Text
-                    style={
-                      styles.avatarText
-                    }
-                  >
-                    {person.name
-                      .charAt(0)
-                      .toUpperCase()}
-                  </Text>
+                  {person.avatarUri ? (
+                    <Image
+                      source={{
+                        uri: person.avatarUri,
+                      }}
+                      style={styles.avatarImage}
+                    />
+                  ) : (
+                    <Text
+                      style={
+                        styles.avatarText
+                      }
+                    >
+                      {person.name
+                        .charAt(0)
+                        .toUpperCase()}
+                    </Text>
+                  )}
                 </View>
 
                 <View
@@ -456,6 +467,12 @@ function createStyles(colors: ThemeColors) {
     borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  avatarImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
   },
 
   avatarText: {

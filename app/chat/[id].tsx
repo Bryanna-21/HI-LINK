@@ -6,6 +6,7 @@ import {
 } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -16,6 +17,14 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
+import {
+  AudioModule,
+  RecordingPresets,
+  setAudioModeAsync,
+  useAudioRecorder,
+} from 'expo-audio';
 import {
   router,
   useLocalSearchParams,
@@ -36,6 +45,7 @@ import {
   markConversationRead,
 } from '../../src/storage/chats';
 import { getIdentity } from '../../src/storage/identity';
+import { createOutgoingCall } from '../../src/storage/callService';
 
 export default function ChatScreen() {
   const { colors } = useTheme();
@@ -67,6 +77,17 @@ export default function ChatScreen() {
   const [identityId, setIdentityId] =
     useState<string | null>(null);
 
+  const [showAttachmentMenu, setShowAttachmentMenu] =
+    useState(false);
+
+  const [isRecording, setIsRecording] =
+    useState(false);
+
+  const recorder =
+    useAudioRecorder(
+      RecordingPresets.HIGH_QUALITY,
+    );
+
   const loadChat = useCallback(
     async () => {
       if (!conversationId) {
@@ -85,6 +106,49 @@ export default function ChatScreen() {
           return;
         }
 
+        const currentIdentity =
+          await getIdentity();
+
+        const otherParticipant =
+          result.participants.find(
+            (participant) =>
+              participant.id !==
+              currentIdentity?.id,
+          ) ??
+          result.participants[0];
+
+        if (otherParticipant) {
+          const { getUserById } =
+            await import('../../src/storage/users');
+
+          const latestUser =
+            await getUserById(
+              otherParticipant.id,
+            );
+
+          if (latestUser) {
+            result.participants =
+              result.participants.map(
+                (participant) =>
+                  participant.id ===
+                  latestUser.id
+                    ? {
+                        ...participant,
+                        name: latestUser.name,
+                        username:
+                          latestUser.username,
+                        avatarUri:
+                          latestUser.avatarUri,
+                      }
+                    : participant,
+              );
+          }
+        }
+
+        await markConversationRead(
+          conversationId,
+        );
+
         const chatMessages =
           await getConversationMessages(
             conversationId,
@@ -92,10 +156,6 @@ export default function ChatScreen() {
 
         setConversation(result);
         setMessages(chatMessages);
-
-        await markConversationRead(
-          conversationId,
-        );
       } catch (error) {
         console.error(
           'Load chat failed:',
@@ -138,6 +198,317 @@ export default function ChatScreen() {
         null
       );
     }, [conversation]);
+
+  async function startCall(
+    type: 'voice' | 'video',
+  ) {
+    if (!conversation || !otherParticipant) {
+      return;
+    }
+
+    const identity =
+      await getIdentity();
+
+    if (!identity) {
+      return;
+    }
+
+    try {
+      const call =
+        await createOutgoingCall({
+          conversationId:
+            conversation.id,
+          type,
+          caller: {
+            id: identity.id,
+            name: identity.name,
+            username: identity.username,
+            avatarUri: identity.avatarUri,
+          },
+          recipient: {
+            id: otherParticipant.id,
+            name: otherParticipant.name,
+            username: otherParticipant.username,
+            avatarUri: otherParticipant.avatarUri,
+          },
+        });
+
+      router.push({
+        pathname: '/call/[id]',
+        params: {
+          id: call.id,
+        },
+      });
+    } catch (error) {
+      console.error(
+        'Start call failed:',
+        error,
+      );
+    }
+  }
+
+  async function sendAttachment(params: {
+    type: 'image' | 'video' | 'audio';
+    uri: string;
+    name?: string;
+  }) {
+    if (!conversation || sending) {
+      return;
+    }
+
+    const identity =
+      await getIdentity();
+
+    if (!identity) {
+      return;
+    }
+
+    setSending(true);
+
+    try {
+      const now =
+        new Date().toISOString();
+
+      const message: Message = {
+        id: `message-${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2, 8)}`,
+        conversationId:
+          conversation.id,
+        senderId: identity.id,
+        senderName: identity.name,
+        senderUsername:
+          identity.username,
+        type: params.type,
+        attachmentUri: params.uri,
+        attachmentName: params.name,
+        createdAt: now,
+      };
+
+      await addMessage(message);
+
+      setMessages((current) => [
+        ...current,
+        message,
+      ]);
+
+      setConversation((current) =>
+        current
+          ? {
+              ...current,
+              lastMessage: message,
+              updatedAt: now,
+            }
+          : current,
+      );
+
+      setShowAttachmentMenu(false);
+    } catch (error) {
+      console.error(
+        'Send attachment failed:',
+        error,
+      );
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function pickPhotos() {
+    const permission =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      return;
+    }
+
+    const result =
+      await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsMultipleSelection: false,
+        quality: 0.9,
+      });
+
+    if (
+      result.canceled ||
+      !result.assets[0]?.uri
+    ) {
+      return;
+    }
+
+    const asset = result.assets[0];
+
+    await sendAttachment({
+      type: 'image',
+      uri: asset.uri,
+      name:
+        asset.fileName ??
+        `photo-${Date.now()}.jpg`,
+    });
+  }
+
+  async function takePhoto() {
+    const permission =
+      await ImagePicker.requestCameraPermissionsAsync();
+
+    if (!permission.granted) {
+      return;
+    }
+
+    const result =
+      await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        allowsEditing: false,
+        quality: 0.9,
+      });
+
+    if (
+      result.canceled ||
+      !result.assets[0]?.uri
+    ) {
+      return;
+    }
+
+    const asset = result.assets[0];
+
+    await sendAttachment({
+      type: 'image',
+      uri: asset.uri,
+      name:
+        asset.fileName ??
+        `photo-${Date.now()}.jpg`,
+    });
+  }
+
+  async function pickVideo() {
+    const permission =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      return;
+    }
+
+    const result =
+      await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['videos'],
+        allowsMultipleSelection: false,
+      });
+
+    if (
+      result.canceled ||
+      !result.assets[0]?.uri
+    ) {
+      return;
+    }
+
+    const asset = result.assets[0];
+
+    await sendAttachment({
+      type: 'video',
+      uri: asset.uri,
+      name:
+        asset.fileName ??
+        `video-${Date.now()}.mp4`,
+    });
+  }
+
+  async function pickAudio() {
+    const result =
+      await DocumentPicker.getDocumentAsync({
+        type: 'audio/*',
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
+
+    if (
+      result.canceled ||
+      !result.assets[0]?.uri
+    ) {
+      return;
+    }
+
+    const asset = result.assets[0];
+
+    await sendAttachment({
+      type: 'audio',
+      uri: asset.uri,
+      name: asset.name,
+    });
+  }
+
+  async function startRecording() {
+    if (isRecording || sending) {
+      return;
+    }
+
+    try {
+      const permission =
+        await AudioModule.requestRecordingPermissionsAsync();
+
+      if (!permission.granted) {
+        return;
+      }
+
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
+      });
+
+      await recorder.prepareToRecordAsync();
+      recorder.record();
+
+      setIsRecording(true);
+      setShowAttachmentMenu(false);
+    } catch (error) {
+      console.error(
+        'Start recording failed:',
+        error,
+      );
+      setIsRecording(false);
+    }
+  }
+
+  async function stopRecording() {
+    if (!isRecording) {
+      return;
+    }
+
+    try {
+      await recorder.stop();
+
+      const uri = recorder.uri;
+
+      setIsRecording(false);
+
+      await setAudioModeAsync({
+        allowsRecording: false,
+        playsInSilentMode: true,
+      });
+
+      if (!uri) {
+        return;
+      }
+
+      await sendAttachment({
+        type: 'audio',
+        uri,
+        name: `voice-${Date.now()}.m4a`,
+      });
+    } catch (error) {
+      console.error(
+        'Stop recording failed:',
+        error,
+      );
+      setIsRecording(false);
+    }
+  }
+
+  async function handleVoiceButton() {
+    if (isRecording) {
+      await stopRecording();
+    } else {
+      await startRecording();
+    }
+  }
 
   async function sendMessage() {
     const text = input.trim();
@@ -224,11 +595,8 @@ export default function ChatScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.screen}
-      behavior={
-        Platform.OS === 'ios'
-          ? 'padding'
-          : undefined
-      }
+      behavior="padding"
+      keyboardVerticalOffset={0}
     >
       <View style={styles.header}>
         <Pressable
@@ -245,15 +613,24 @@ export default function ChatScreen() {
         </Pressable>
 
         <View style={styles.headerAvatar}>
-          <Text style={styles.headerAvatarText}>
-            {(
-              otherParticipant?.name ||
-              conversation.title ||
-              'C'
-            )
-              .charAt(0)
-              .toUpperCase()}
-          </Text>
+          {otherParticipant?.avatarUri ? (
+            <Image
+              source={{
+                uri: otherParticipant.avatarUri,
+              }}
+              style={styles.headerAvatarImage}
+            />
+          ) : (
+            <Text style={styles.headerAvatarText}>
+              {(
+                otherParticipant?.name ||
+                conversation.title ||
+                'C'
+              )
+                .charAt(0)
+                .toUpperCase()}
+            </Text>
+          )}
         </View>
 
         <View style={styles.headerInfo}>
@@ -275,6 +652,32 @@ export default function ChatScreen() {
             </Text>
           ) : null}
         </View>
+
+        <Pressable
+          onPress={() => startCall('voice')}
+          style={styles.headerButton}
+          accessibilityRole="button"
+          accessibilityLabel="Start voice call"
+        >
+          <Ionicons
+            name="call-outline"
+            size={21}
+            color={colors.text}
+          />
+        </Pressable>
+
+        <Pressable
+          onPress={() => startCall('video')}
+          style={styles.headerButton}
+          accessibilityRole="button"
+          accessibilityLabel="Start video call"
+        >
+          <Ionicons
+            name="videocam-outline"
+            size={22}
+            color={colors.text}
+          />
+        </Pressable>
 
         <Pressable
           style={styles.headerButton}
@@ -329,14 +732,177 @@ export default function ChatScreen() {
         )}
       </ScrollView>
 
+      {showAttachmentMenu ? (
+        <View style={styles.attachmentMenu}>
+          <Pressable
+            onPress={takePhoto}
+            style={styles.attachmentOption}
+            accessibilityRole="button"
+            accessibilityLabel="Take photo"
+          >
+            <View
+              style={[
+                styles.attachmentIcon,
+                {
+                  backgroundColor:
+                    colors.accentSoft,
+                },
+              ]}
+            >
+              <Ionicons
+                name="camera"
+                size={21}
+                color={colors.accent}
+              />
+            </View>
+            <Text style={styles.attachmentLabel}>
+              Camera
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={pickPhotos}
+            style={styles.attachmentOption}
+            accessibilityRole="button"
+            accessibilityLabel="Choose photo"
+          >
+            <View
+              style={[
+                styles.attachmentIcon,
+                {
+                  backgroundColor:
+                    colors.blueSoft,
+                },
+              ]}
+            >
+              <Ionicons
+                name="images"
+                size={21}
+                color={colors.blue}
+              />
+            </View>
+            <Text style={styles.attachmentLabel}>
+              Photos
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={pickVideo}
+            style={styles.attachmentOption}
+            accessibilityRole="button"
+            accessibilityLabel="Choose video"
+          >
+            <View
+              style={[
+                styles.attachmentIcon,
+                {
+                  backgroundColor:
+                    colors.orange + '22',
+                },
+              ]}
+            >
+              <Ionicons
+                name="videocam"
+                size={21}
+                color={colors.orange}
+              />
+            </View>
+            <Text style={styles.attachmentLabel}>
+              Video
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={pickAudio}
+            style={styles.attachmentOption}
+            accessibilityRole="button"
+            accessibilityLabel="Choose audio"
+          >
+            <View
+              style={[
+                styles.attachmentIcon,
+                {
+                  backgroundColor:
+                    colors.accentSoft,
+                },
+              ]}
+            >
+              <Ionicons
+                name="musical-notes"
+                size={21}
+                color={colors.accent}
+              />
+            </View>
+            <Text style={styles.attachmentLabel}>
+              Audio
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={handleVoiceButton}
+            style={styles.attachmentOption}
+            accessibilityRole="button"
+            accessibilityLabel={
+              isRecording
+                ? 'Stop voice recording'
+                : 'Record voice message'
+            }
+          >
+            <View
+              style={[
+                styles.attachmentIcon,
+                {
+                  backgroundColor:
+                    isRecording
+                      ? colors.danger + '22'
+                      : colors.blueSoft,
+                },
+              ]}
+            >
+              <Ionicons
+                name={
+                  isRecording
+                    ? 'stop'
+                    : 'mic'
+                }
+                size={21}
+                color={
+                  isRecording
+                    ? colors.danger
+                    : colors.blue
+                }
+              />
+            </View>
+            <Text style={styles.attachmentLabel}>
+              {isRecording
+                ? 'Stop'
+                : 'Voice'}
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+
       <View style={styles.composer}>
         <Pressable
+          onPress={() =>
+            setShowAttachmentMenu(
+              (current) => !current,
+            )
+          }
           style={styles.attachButton}
           accessibilityRole="button"
-          accessibilityLabel="Attach"
+          accessibilityLabel={
+            showAttachmentMenu
+              ? 'Close attachments'
+              : 'Attach media'
+          }
         >
           <Ionicons
-            name="add"
+            name={
+              showAttachmentMenu
+                ? 'close'
+                : 'add'
+            }
             size={25}
             color={colors.accent}
           />
@@ -345,30 +911,62 @@ export default function ChatScreen() {
         <TextInput
           value={input}
           onChangeText={setInput}
-          placeholder="Message"
+          placeholder={
+            isRecording
+              ? 'Recording voice message…'
+              : 'Message'
+          }
           placeholderTextColor={colors.muted}
           style={styles.input}
           multiline
           maxLength={4000}
+          editable={!isRecording}
         />
 
-        <Pressable
-          style={[
-            styles.sendButton,
-            (!input.trim() || sending) &&
-              styles.sendButtonDisabled,
-          ]}
-          onPress={sendMessage}
-          disabled={!input.trim() || sending}
-          accessibilityRole="button"
-          accessibilityLabel="Send message"
-        >
-          <Ionicons
-            name="send"
-            size={19}
-            color={colors.background}
-          />
-        </Pressable>
+        {input.trim() && !isRecording ? (
+          <Pressable
+            style={[
+              styles.sendButton,
+              sending &&
+                styles.sendButtonDisabled,
+            ]}
+            onPress={sendMessage}
+            disabled={sending}
+            accessibilityRole="button"
+            accessibilityLabel="Send message"
+          >
+            <Ionicons
+              name="send"
+              size={19}
+              color={colors.background}
+            />
+          </Pressable>
+        ) : (
+          <Pressable
+            onPress={handleVoiceButton}
+            style={[
+              styles.voiceButton,
+              isRecording &&
+                styles.voiceButtonRecording,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={
+              isRecording
+                ? 'Stop voice recording'
+                : 'Record voice message'
+            }
+          >
+            <Ionicons
+              name={
+                isRecording
+                  ? 'stop'
+                  : 'mic'
+              }
+              size={19}
+              color={colors.background}
+            />
+          </Pressable>
+        )}
       </View>
     </KeyboardAvoidingView>
   );
@@ -401,6 +999,56 @@ function MessageBubble({
             : styles.bubbleOther,
         ]}
       >
+        {message.attachmentUri ? (
+          <View
+            style={[
+              styles.attachmentBubble,
+              own &&
+                styles.attachmentBubbleOwn,
+            ]}
+          >
+            <Ionicons
+              name={
+                message.type === 'image'
+                  ? 'image'
+                  : message.type === 'video'
+                    ? 'videocam'
+                    : 'musical-notes'
+              }
+              size={24}
+              color={
+                own
+                  ? colors.background
+                  : colors.accent
+              }
+            />
+
+            {message.type === 'image' ? (
+              <Image
+                source={{
+                  uri: message.attachmentUri,
+                }}
+                style={styles.messageImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <Text
+                style={[
+                  styles.attachmentName,
+                  own &&
+                    styles.attachmentNameOwn,
+                ]}
+                numberOfLines={2}
+              >
+                {message.attachmentName ??
+                  (message.type === 'video'
+                    ? 'Video'
+                    : 'Audio')}
+              </Text>
+            )}
+          </View>
+        ) : null}
+
         {message.text ? (
           <Text
             style={[
@@ -413,15 +1061,30 @@ function MessageBubble({
           </Text>
         ) : null}
 
-        <Text
-          style={[
-            styles.messageTime,
-            own &&
-              styles.messageTimeOwn,
-          ]}
-        >
-          {formatTime(message.createdAt)}
-        </Text>
+        <View style={styles.messageMeta}>
+          <Text
+            style={[
+              styles.messageTime,
+              own &&
+                styles.messageTimeOwn,
+            ]}
+          >
+            {formatTime(message.createdAt)}
+          </Text>
+
+          {own ? (
+            <Text
+              style={[
+                styles.readReceipt,
+                message.readAt
+                  ? styles.readReceiptRead
+                  : styles.readReceiptDelivered,
+              ]}
+            >
+              {message.readAt ? '✓✓' : '✓'}
+            </Text>
+          ) : null}
+        </View>
       </View>
     </View>
   );
@@ -488,6 +1151,12 @@ function createStyles(colors: ThemeColors) {
     fontWeight: '900',
   },
 
+  headerAvatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+
   headerInfo: {
     flex: 1,
     marginHorizontal: 10,
@@ -510,9 +1179,10 @@ function createStyles(colors: ThemeColors) {
   },
 
   messagesContent: {
-    paddingHorizontal: 12,
-    paddingVertical: 18,
     flexGrow: 1,
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 18,
     justifyContent: 'flex-start',
   },
 
@@ -569,10 +1239,31 @@ function createStyles(colors: ThemeColors) {
     color: colors.accentDark,
   },
 
+  messageMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 4,
+  },
+
+  readReceipt: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+
+  readReceiptDelivered: {
+    color: colors.background,
+  },
+
+  readReceiptRead: {
+    color: colors.blue,
+  },
+
   empty: {
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
+    justifyContent: 'flex-start',
+    paddingTop: 24,
+    paddingBottom: 24,
   },
 
   emptyIcon: {
@@ -595,6 +1286,68 @@ function createStyles(colors: ThemeColors) {
     color: colors.muted,
     fontSize: 13,
     marginTop: 6,
+  },
+
+  attachmentMenu: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-around',
+    paddingHorizontal: 8,
+    paddingTop: 10,
+    paddingBottom: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.background,
+  },
+
+  attachmentOption: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  attachmentIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  attachmentLabel: {
+    color: colors.textSecondary,
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 5,
+  },
+
+  attachmentBubble: {
+    minWidth: 170,
+    minHeight: 58,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+
+  attachmentBubbleOwn: {
+    opacity: 0.98,
+  },
+
+  attachmentName: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  attachmentNameOwn: {
+    color: colors.background,
+  },
+
+  messageImage: {
+    width: 190,
+    height: 150,
+    borderRadius: 12,
   },
 
   composer: {
@@ -638,6 +1391,19 @@ function createStyles(colors: ThemeColors) {
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  voiceButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: colors.blue,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  voiceButtonRecording: {
+    backgroundColor: colors.danger,
   },
 
   sendButtonDisabled: {

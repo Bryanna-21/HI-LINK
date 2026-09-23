@@ -3,14 +3,76 @@ import {
   Message,
 } from '../models/chat';
 import { getLocal, setLocal } from './localStore';
+import { getIdentity } from './identity';
 
 const CONVERSATIONS_KEY = 'chat_conversations';
 const MESSAGES_KEY = 'chat_messages';
 
-export async function getConversations(): Promise<Conversation[]> {
+async function getStoredConversations(): Promise<Conversation[]> {
   return getLocal<Conversation[]>(
     CONVERSATIONS_KEY,
     [],
+  );
+}
+
+export async function getConversations(): Promise<Conversation[]> {
+  const conversations = await getStoredConversations();
+  const identity = await getIdentity();
+
+  if (!identity) {
+    return [];
+  }
+
+  let changed = false;
+
+  const visibleConversations = conversations.filter(
+    (conversation) => {
+      if (conversation.ownerId) {
+        return conversation.ownerId === identity.id;
+      }
+
+      const belongsToIdentity =
+        conversation.participants.some(
+          (participant) =>
+            participant.id === identity.id,
+        );
+
+      if (belongsToIdentity) {
+        conversation.ownerId = identity.id;
+        changed = true;
+        return true;
+      }
+
+      return false;
+    },
+  );
+
+  for (const conversation of visibleConversations) {
+    conversation.participants =
+      conversation.participants.map(
+        (participant) =>
+          participant.id === identity.id
+            ? {
+                ...participant,
+                name: identity.name,
+                username: identity.username,
+                avatarUri: identity.avatarUri,
+              }
+            : participant,
+      );
+  }
+
+  if (changed) {
+    await setLocal(
+      CONVERSATIONS_KEY,
+      conversations,
+    );
+  }
+
+  return visibleConversations.sort(
+    (a, b) =>
+      new Date(b.updatedAt).getTime() -
+      new Date(a.updatedAt).getTime(),
   );
 }
 

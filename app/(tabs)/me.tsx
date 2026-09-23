@@ -121,14 +121,15 @@ export default function MeScreen() {
           updatedAt: new Date().toISOString(),
         };
 
-        await setLocal(PROFILE_PICTURE_KEY, uri);
-        await setLocal(COVER_IMAGE_KEY, coverImage);
         setIdentity(updatedIdentity);
 
         const { saveIdentity } =
           await import('../../src/storage/identity');
+        const { upsertUser } =
+          await import('../../src/storage/users');
 
         await saveIdentity(updatedIdentity);
+        await upsertUser(updatedIdentity);
       }
     } else {
       setCoverImage(uri);
@@ -199,6 +200,8 @@ export default function MeScreen() {
           onPress: async () => {
             await clearIdentity();
             await setOnboardingComplete(false);
+            await setLocal(PROFILE_PICTURE_KEY, null);
+            await setLocal(COVER_IMAGE_KEY, null);
             router.replace('/onboarding');
           },
         },
