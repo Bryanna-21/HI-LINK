@@ -49,3 +49,33 @@ export async function getPostsByAuthor(
     (post) => post.authorId === authorId,
   );
 }
+
+
+export async function migratePostAuthor(
+  fromAuthorId: string,
+  toAuthorId: string,
+  toUser: {
+    name: string;
+    username: string;
+    avatarUri?: string;
+  },
+) {
+  const posts = await getPosts();
+
+  const migratedPosts = posts.map((post) => {
+    if (post.authorId !== fromAuthorId) {
+      return post;
+    }
+
+    return {
+      ...post,
+      authorId: toAuthorId,
+      authorName: toUser.name,
+      authorUsername: toUser.username,
+      authorAvatarUri: toUser.avatarUri,
+      updatedAt: new Date().toISOString(),
+    };
+  });
+
+  await savePosts(migratedPosts);
+}

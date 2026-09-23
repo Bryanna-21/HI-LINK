@@ -11,24 +11,22 @@ import {
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-import { colors } from '../src/theme/colors';
 import {
   DEFAULT_VIDEO_SETTINGS,
   getVideoSettings,
   saveVideoSettings,
   VideoDisplayMode,
 } from '../src/storage/videoSettings';
-
-const COLORS = {
-  background: '#070908',
-  card: '#101411',
-  border: '#202620',
-  green: '#19E68C',
-  white: '#FFFFFF',
-  muted: '#77817A',
-};
+import {
+  ThemeColors,
+  ThemeMode,
+  useTheme,
+} from '../src/theme/ThemeProvider';
 
 export default function VideoSettingsScreen() {
+  const { colors, mode, setMode } = useTheme();
+  const styles = createStyles(colors);
+
   const [displayMode, setDisplayMode] =
     useState<VideoDisplayMode>(
       DEFAULT_VIDEO_SETTINGS.displayMode,
@@ -79,7 +77,7 @@ export default function VideoSettingsScreen() {
       <View style={styles.loadingScreen}>
         <ActivityIndicator
           size="small"
-          color={COLORS.green}
+          color={colors.accent}
         />
       </View>
     );
@@ -97,12 +95,12 @@ export default function VideoSettingsScreen() {
           <Ionicons
             name="arrow-back"
             size={24}
-            color={COLORS.white}
+            color={colors.text}
           />
         </Pressable>
 
         <Text style={styles.title}>
-          Video Settings
+          Settings
         </Text>
 
         <View style={styles.headerSpacer} />
@@ -112,6 +110,70 @@ export default function VideoSettingsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
       >
+        <Text style={styles.sectionTitle}>
+          APPEARANCE
+        </Text>
+
+        <View style={styles.card}>
+          <Text style={styles.optionTitle}>
+            Theme
+          </Text>
+
+          <Text style={styles.description}>
+            Choose how HI-LINK looks on this device.
+            System follows your device appearance setting.
+          </Text>
+
+          <View style={styles.segment}>
+            {(
+              [
+                ['system', 'phone-portrait-outline', 'System'],
+                ['light', 'sunny-outline', 'Light'],
+                ['dark', 'moon-outline', 'Dark'],
+              ] as const
+            ).map(([themeMode, icon, label]) => {
+              const active = mode === themeMode;
+
+              return (
+                <Pressable
+                  key={themeMode}
+                  onPress={() =>
+                    void setMode(themeMode as ThemeMode)
+                  }
+                  style={[
+                    styles.themeOption,
+                    active && styles.themeOptionActive,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityState={{
+                    selected: active,
+                  }}
+                  accessibilityLabel={`${label} theme`}
+                >
+                  <Ionicons
+                    name={icon}
+                    size={18}
+                    color={
+                      active
+                        ? colors.background
+                        : colors.muted
+                    }
+                  />
+
+                  <Text
+                    style={[
+                      styles.themeText,
+                      active && styles.themeTextActive,
+                    ]}
+                  >
+                    {label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
         <Text style={styles.sectionTitle}>
           VIDEO DISPLAY
         </Text>
@@ -145,8 +207,8 @@ export default function VideoSettingsScreen() {
                 size={20}
                 color={
                   displayMode === 'fit'
-                    ? COLORS.background
-                    : COLORS.muted
+                    ? colors.background
+                    : colors.muted
                 }
               />
 
@@ -179,8 +241,8 @@ export default function VideoSettingsScreen() {
                 size={20}
                 color={
                   displayMode === 'fill'
-                    ? COLORS.background
-                    : COLORS.muted
+                    ? colors.background
+                    : colors.muted
                 }
               />
 
@@ -223,10 +285,10 @@ export default function VideoSettingsScreen() {
                 )
               }
               trackColor={{
-                false: '#303630',
-                true: COLORS.green,
+                false: colors.border,
+                true: colors.accent,
               }}
-              thumbColor={COLORS.white}
+              thumbColor={colors.text}
             />
           </View>
         </View>
@@ -235,7 +297,7 @@ export default function VideoSettingsScreen() {
           <Ionicons
             name="information-circle-outline"
             size={20}
-            color={COLORS.green}
+            color={colors.accent}
           />
 
           <Text style={styles.infoText}>
@@ -249,15 +311,16 @@ export default function VideoSettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
   },
 
   loadingScreen: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -268,7 +331,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: colors.border,
   },
 
   backButton: {
@@ -280,7 +343,7 @@ const styles = StyleSheet.create({
 
   title: {
     flex: 1,
-    color: COLORS.white,
+    color: colors.text,
     fontSize: 20,
     fontWeight: '800',
     textAlign: 'center',
@@ -296,7 +359,7 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    color: COLORS.green,
+    color: colors.accent,
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 1.5,
@@ -305,22 +368,22 @@ const styles = StyleSheet.create({
   },
 
   card: {
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
     borderRadius: 18,
     padding: 16,
     marginBottom: 22,
   },
 
   optionTitle: {
-    color: COLORS.white,
+    color: colors.text,
     fontSize: 16,
     fontWeight: '700',
   },
 
   description: {
-    color: COLORS.muted,
+    color: colors.muted,
     fontSize: 13,
     lineHeight: 19,
     marginTop: 5,
@@ -337,7 +400,7 @@ const styles = StyleSheet.create({
     minHeight: 48,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -345,18 +408,45 @@ const styles = StyleSheet.create({
   },
 
   segmentOptionActive: {
-    backgroundColor: COLORS.green,
-    borderColor: COLORS.green,
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+
+  themeOption: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
+  },
+
+  themeOptionActive: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+
+  themeText: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  themeTextActive: {
+    color: colors.background,
   },
 
   segmentText: {
-    color: COLORS.muted,
+    color: colors.muted,
     fontSize: 14,
     fontWeight: '700',
   },
 
   segmentTextActive: {
-    color: COLORS.background,
+    color: colors.background,
   },
 
   settingRow: {
@@ -372,17 +462,18 @@ const styles = StyleSheet.create({
   infoBox: {
     flexDirection: 'row',
     gap: 10,
-    backgroundColor: '#0C120E',
+    backgroundColor: colors.cardRaised,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#193323',
+    borderColor: colors.border,
     padding: 14,
   },
 
   infoText: {
     flex: 1,
-    color: COLORS.muted,
+    color: colors.muted,
     fontSize: 12,
     lineHeight: 18,
   },
-});
+  });
+}

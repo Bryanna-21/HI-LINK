@@ -16,7 +16,10 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { colors } from '../src/theme/colors';
+import {
+  ThemeColors,
+  useTheme,
+} from '../src/theme/ThemeProvider';
 import { Post, PostVisibility } from '../src/models/post';
 import { getIdentity } from '../src/storage/identity';
 import { getPosts, updatePost, addPost } from '../src/storage/posts';
@@ -52,6 +55,9 @@ function normalizeTags(value: string): string[] {
 }
 
 export default function CreateVideoScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   const { editId } = useLocalSearchParams<{
     editId?: string;
   }>();
@@ -174,6 +180,19 @@ export default function CreateVideoScreen() {
       result.assets.length > 0
     ) {
       const asset = result.assets[0];
+
+      console.log(
+        '[HI-LINK VIDEO ASSET]',
+        {
+          uri: asset.uri,
+          fileName: asset.fileName ?? null,
+          mimeType: asset.mimeType ?? null,
+          fileSize: asset.fileSize ?? null,
+          width: asset.width ?? null,
+          height: asset.height ?? null,
+          duration: asset.duration ?? null,
+        },
+      );
 
       setVideoUri(asset.uri);
       setVideoWidth(
@@ -358,6 +377,7 @@ export default function CreateVideoScreen() {
           likes: 0,
           comments: 0,
           shares: 0,
+          reshares: 0,
           saves: 0,
 
           createdAt: now,
@@ -389,7 +409,7 @@ export default function CreateVideoScreen() {
         <View style={styles.loading}>
           <ActivityIndicator
             size="large"
-            color={colors.exileGreen}
+            color={colors.accent}
           />
         </View>
       </SafeAreaView>
@@ -410,7 +430,7 @@ export default function CreateVideoScreen() {
             <Ionicons
               name="arrow-back"
               size={24}
-              color={colors.white}
+              color={colors.text}
             />
           </Pressable>
 
@@ -436,7 +456,7 @@ export default function CreateVideoScreen() {
                   <Ionicons
                     name="play-circle"
                     size={64}
-                    color={colors.white}
+                    color={colors.text}
                   />
                 </View>
               </View>
@@ -449,7 +469,7 @@ export default function CreateVideoScreen() {
                   <Ionicons
                     name="swap-horizontal"
                     size={18}
-                    color={colors.exileGreen}
+                    color={colors.accent}
                   />
                   <Text style={styles.secondaryText}>
                     Change video
@@ -463,7 +483,7 @@ export default function CreateVideoScreen() {
                   <Ionicons
                     name="trash-outline"
                     size={18}
-                    color={colors.red}
+                    color={colors.danger}
                   />
                   <Text style={styles.removeText}>
                     Remove
@@ -479,7 +499,7 @@ export default function CreateVideoScreen() {
               <Ionicons
                 name="videocam-outline"
                 size={44}
-                color={colors.exileGreen}
+                color={colors.accent}
               />
 
               <Text style={styles.chooseTitle}>
@@ -633,7 +653,7 @@ export default function CreateVideoScreen() {
           <Ionicons
             name="shield-checkmark-outline"
             size={22}
-            color={colors.exileGreen}
+            color={colors.accent}
           />
 
           <View style={styles.safetyCopy}>
@@ -660,7 +680,7 @@ export default function CreateVideoScreen() {
         >
           {saving ? (
             <ActivityIndicator
-              color={colors.black}
+              color={colors.background}
             />
           ) : (
             <Text style={styles.publishText}>
@@ -684,6 +704,9 @@ function SettingRow({
   value: boolean;
   onChange: (value: boolean) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.settingRow}>
       <Text style={styles.settingTitle}>
@@ -695,17 +718,18 @@ function SettingRow({
         onValueChange={onChange}
         trackColor={{
           false: colors.border,
-          true: colors.exileGreenDark,
+          true: colors.accentDark,
         }}
         thumbColor={
-          value ? colors.exileGreen : colors.whiteMuted
+          value ? colors.accent : colors.textSecondary
         }
       />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background,
@@ -734,13 +758,13 @@ const styles = StyleSheet.create({
     borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.charcoal,
+    backgroundColor: colors.cardRaised,
   },
 
   title: {
     flex: 1,
     marginLeft: 12,
-    color: colors.white,
+    color: colors.text,
     fontSize: 21,
     fontWeight: '700',
   },
@@ -752,7 +776,7 @@ const styles = StyleSheet.create({
   mediaCard: {
     overflow: 'hidden',
     borderRadius: 18,
-    backgroundColor: colors.charcoal,
+    backgroundColor: colors.cardRaised,
     borderWidth: 1,
     borderColor: colors.border,
     marginBottom: 22,
@@ -766,7 +790,7 @@ const styles = StyleSheet.create({
   },
 
   chooseTitle: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 18,
     fontWeight: '700',
     marginTop: 12,
@@ -782,7 +806,7 @@ const styles = StyleSheet.create({
     height: 300,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.black,
+    backgroundColor: colors.background,
   },
 
   videoImage: {
@@ -816,7 +840,7 @@ const styles = StyleSheet.create({
   },
 
   secondaryText: {
-    color: colors.exileGreen,
+    color: colors.accent,
     fontWeight: '700',
   },
 
@@ -824,7 +848,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
     paddingHorizontal: 16,
     borderRadius: 12,
-    backgroundColor: '#241214',
+    backgroundColor: 'rgba(255,77,94,0.10)',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -832,12 +856,12 @@ const styles = StyleSheet.create({
   },
 
   removeText: {
-    color: colors.red,
+    color: colors.danger,
     fontWeight: '700',
   },
 
   sectionTitle: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 16,
     fontWeight: '700',
     marginBottom: 9,
@@ -849,8 +873,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.charcoal,
-    color: colors.white,
+    backgroundColor: colors.cardRaised,
+    color: colors.text,
     paddingHorizontal: 14,
     fontSize: 15,
   },
@@ -860,8 +884,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.charcoal,
-    color: colors.white,
+    backgroundColor: colors.cardRaised,
+    color: colors.text,
     paddingHorizontal: 14,
     paddingTop: 14,
     fontSize: 15,
@@ -885,24 +909,24 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.charcoal,
+    backgroundColor: colors.cardRaised,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   chipSelected: {
-    backgroundColor: colors.exileGreen,
-    borderColor: colors.exileGreen,
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
   },
 
   chipText: {
-    color: colors.whiteMuted,
+    color: colors.textSecondary,
     fontSize: 13,
     fontWeight: '600',
   },
 
   chipTextSelected: {
-    color: colors.black,
+    color: colors.background,
   },
 
   audienceGrid: {
@@ -917,30 +941,30 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.charcoal,
+    backgroundColor: colors.cardRaised,
     justifyContent: 'center',
   },
 
   audienceSelected: {
-    borderColor: colors.exileGreen,
-    backgroundColor: '#0D2A20',
+    borderColor: colors.accent,
+    backgroundColor: colors.accentSoft,
   },
 
   audienceText: {
-    color: colors.whiteMuted,
+    color: colors.textSecondary,
     fontSize: 13,
     fontWeight: '600',
   },
 
   audienceTextSelected: {
-    color: colors.exileGreen,
+    color: colors.accent,
   },
 
   settingsCard: {
     borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.charcoal,
+    backgroundColor: colors.cardRaised,
     paddingHorizontal: 14,
   },
 
@@ -954,7 +978,7 @@ const styles = StyleSheet.create({
   },
 
   settingTitle: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -965,7 +989,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.charcoal,
+    backgroundColor: colors.cardRaised,
     flexDirection: 'row',
     gap: 12,
   },
@@ -975,7 +999,7 @@ const styles = StyleSheet.create({
   },
 
   safetyTitle: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -990,7 +1014,7 @@ const styles = StyleSheet.create({
   publishButton: {
     minHeight: 52,
     borderRadius: 15,
-    backgroundColor: colors.exileGreen,
+    backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 20,
@@ -1001,7 +1025,7 @@ const styles = StyleSheet.create({
   },
 
   publishText: {
-    color: colors.black,
+    color: colors.background,
     fontSize: 16,
     fontWeight: '800',
   },

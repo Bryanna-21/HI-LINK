@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   Image,
@@ -11,9 +11,9 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 
-import { colors } from '../../src/theme/colors';
+import { ThemeColors, useTheme } from '../../src/theme/ThemeProvider';
 import {
   clearIdentity,
   getIdentity,
@@ -24,16 +24,22 @@ import {
 } from '../../src/storage/localStore';
 import { setOnboardingComplete } from '../../src/storage/onboarding';
 import { HiLinkUser } from '../../src/models/user';
+import { getPostsByAuthor } from '../../src/storage/posts';
+import { Post } from '../../src/models/post';
 
 const PROFILE_PICTURE_KEY = 'profile_picture_uri';
 const COVER_IMAGE_KEY = 'cover_image_uri';
 
 export default function MeScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const { width } = useWindowDimensions();
 
   const [identity, setIdentity] = useState<HiLinkUser | null>(null);
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [coverImage, setCoverImage] = useState<string | null>(null);
+  const [userPosts, setUserPosts] = useState<Post[]>([]);
+  const [activeTab, setActiveTab] = useState<'posts' | 'profile'>('posts');
 
   const horizontalPadding = Math.max(16, Math.min(24, width * 0.05));
   const avatarSize = Math.min(76, width * 0.20);
@@ -42,6 +48,16 @@ export default function MeScreen() {
   useEffect(() => {
     loadProfile();
   }, []);
+
+  const refreshProfile = useCallback(() => {
+    loadProfile();
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshProfile();
+    }, [refreshProfile]),
+  );
 
   async function loadProfile() {
     const user = await getIdentity();
@@ -55,8 +71,19 @@ export default function MeScreen() {
     );
 
     setIdentity(user);
-    setProfilePicture(savedProfilePicture);
-    setCoverImage(savedCoverImage);
+    setProfilePicture(
+      user?.avatarUri ?? savedProfilePicture,
+    );
+    setCoverImage(
+      user?.coverUri ?? savedCoverImage,
+    );
+
+    if (user) {
+      const posts = await getPostsByAuthor(user.id);
+      setUserPosts(posts);
+    } else {
+      setUserPosts([]);
+    }
   }
 
   async function chooseImage(type: 'profile' | 'cover') {
@@ -73,8 +100,7 @@ export default function MeScreen() {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: type === 'profile' ? [1, 1] : [16, 7],
+      allowsEditing: false,
       quality: 0.9,
     });
 
@@ -87,9 +113,41 @@ export default function MeScreen() {
     if (type === 'profile') {
       setProfilePicture(uri);
       await setLocal(PROFILE_PICTURE_KEY, uri);
+
+      if (identity) {
+        const updatedIdentity: HiLinkUser = {
+          ...identity,
+          avatarUri: uri,
+          updatedAt: new Date().toISOString(),
+        };
+
+        await setLocal(PROFILE_PICTURE_KEY, uri);
+        await setLocal(COVER_IMAGE_KEY, coverImage);
+        setIdentity(updatedIdentity);
+
+        const { saveIdentity } =
+          await import('../../src/storage/identity');
+
+        await saveIdentity(updatedIdentity);
+      }
     } else {
       setCoverImage(uri);
       await setLocal(COVER_IMAGE_KEY, uri);
+
+      if (identity) {
+        const updatedIdentity: HiLinkUser = {
+          ...identity,
+          coverUri: uri,
+          updatedAt: new Date().toISOString(),
+        };
+
+        setIdentity(updatedIdentity);
+
+        const { saveIdentity } =
+          await import('../../src/storage/identity');
+
+        await saveIdentity(updatedIdentity);
+      }
     }
   }
 
@@ -190,7 +248,7 @@ export default function MeScreen() {
             <Ionicons
               name="ellipsis-horizontal"
               size={22}
-              color={colors.white}
+              color={colors.text}
             />
           </Pressable>
         </View>
@@ -216,7 +274,7 @@ export default function MeScreen() {
                   <Ionicons
                     name="image-outline"
                     size={30}
-                    color={colors.exileGreen}
+                    color={colors.accent}
                   />
                 </View>
 
@@ -233,7 +291,7 @@ export default function MeScreen() {
               <Ionicons
                 name="camera-outline"
                 size={19}
-                color={colors.white}
+                color={colors.text}
               />
             </Pressable>
           </View>
@@ -296,11 +354,21 @@ export default function MeScreen() {
             <Text style={styles.name}>{displayName()}</Text>
             <Text style={styles.username}>{username()}</Text>
 
+            {identity?.bio?.trim() ? (
+              <Text style={styles.bioText}>
+                {identity.bio}
+              </Text>
+            ) : (
+              <Text style={styles.bioPlaceholder}>
+                Add a bio from Edit Profile
+              </Text>
+            )}
+
             <View style={styles.schoolRow}>
               <Ionicons
                 name="school-outline"
                 size={18}
-                color={colors.exileGreen}
+                color={colors.accent}
               />
               <Text style={styles.schoolText}>{school()}</Text>
             </View>
@@ -331,6 +399,58 @@ export default function MeScreen() {
               ) : null}
             </View>
 
+            <View style={styles.profileStats}>
+              <Pressable
+                style={styles.profileStat}
+                onPress={() => setActiveTab('posts')}
+              >
+                <Text style={styles.profileStatValue}>
+                  {userPosts.length}
+                </Text>
+                <Text style={styles.profileStatLabel}>
+                  Posts
+                </Text>
+              </Pressable>
+
+              <View style={styles.profileStatDivider} />
+
+              <Pressable
+                style={styles.profileStat}
+                onPress={() =>
+                  Alert.alert(
+                    'Followers',
+                    'Follower management will be available when the follow system is connected.',
+                  )
+                }
+              >
+                <Text style={styles.profileStatValue}>
+                  {identity?.followersCount ?? 0}
+                </Text>
+                <Text style={styles.profileStatLabel}>
+                  Followers
+                </Text>
+              </Pressable>
+
+              <View style={styles.profileStatDivider} />
+
+              <Pressable
+                style={styles.profileStat}
+                onPress={() =>
+                  Alert.alert(
+                    'Following',
+                    'Following management will be available when the follow system is connected.',
+                  )
+                }
+              >
+                <Text style={styles.profileStatValue}>
+                  {identity?.followingCount ?? 0}
+                </Text>
+                <Text style={styles.profileStatLabel}>
+                  Following
+                </Text>
+              </Pressable>
+            </View>
+
             <Pressable
               style={styles.editButton}
               onPress={() => router.push('/edit-profile')}
@@ -347,41 +467,410 @@ export default function MeScreen() {
           </View>
         </View>
 
-        <View style={[styles.section, { marginHorizontal: horizontalPadding }]}>
-          <Text style={styles.sectionTitle}>Your Hi-Link</Text>
+        <View
+          style={[
+            styles.section,
+            { marginHorizontal: horizontalPadding },
+          ]}
+        >
+          <View style={styles.profileTabs}>
+            <Pressable
+              style={[
+                styles.profileTab,
+                activeTab === 'posts' && styles.profileTabActive,
+              ]}
+              onPress={() => setActiveTab('posts')}
+            >
+              <Text
+                style={[
+                  styles.profileTabText,
+                  activeTab === 'posts' &&
+                    styles.profileTabTextActive,
+                ]}
+              >
+                POSTS
+              </Text>
+            </Pressable>
 
-          <ProfileRow
-            icon="images-outline"
-            title="Posts"
-            subtitle="Your photos, videos and posts"
-            onPress={() => router.push('/my-posts')}
-          />
+            <Pressable
+              style={[
+                styles.profileTab,
+                activeTab === 'profile' && styles.profileTabActive,
+              ]}
+              onPress={() => setActiveTab('profile')}
+            >
+              <Text
+                style={[
+                  styles.profileTabText,
+                  activeTab === 'profile' &&
+                    styles.profileTabTextActive,
+                ]}
+              >
+                PROFILE
+              </Text>
+            </Pressable>
+          </View>
 
-          <ProfileRow
-            icon="bookmark-outline"
-            title="Saved resources"
-            subtitle="Notes, exams and study materials"
-            onPress={() => router.push('/saved')}
-          />
+          {activeTab === 'posts' ? (
+            <View style={styles.profileSection}>
+              <View style={styles.postsTitleRow}>
+                <Text style={styles.sectionTitle}>
+                  Posts
+                </Text>
 
-          <ProfileRow
-            icon="download-outline"
-            title="Downloads"
-            subtitle="Files available offline"
-          />
+                <Pressable
+                  onPress={() => router.push('/my-posts')}
+                >
+                  <Text style={styles.viewAllText}>
+                    View all
+                  </Text>
+                </Pressable>
+              </View>
 
-          <ProfileRow
-            icon="shield-checkmark-outline"
-            title="Privacy & Security"
-            subtitle="Control your safety and visibility"
-            onPress={() =>
-              router.push('/privacy-security')
-            }
-          />
+              {userPosts.length > 0 ? (
+                <>
+                  <Text style={styles.postsCountLabel}>
+                    {userPosts.length}{' '}
+                    {userPosts.length === 1 ? 'post' : 'posts'}
+                  </Text>
+
+                  {userPosts.slice(0, 3).map((post) => (
+                    <Pressable
+                      key={post.id}
+                      style={styles.postPreviewCard}
+                      onPress={() => router.push('/my-posts')}
+                    >
+                      <View style={styles.postPreviewIconWrap}>
+                        <Ionicons
+                          name={getPostPreviewIcon(post) as any}
+                          size={22}
+                          color={colors.accent}
+                        />
+                      </View>
+
+                      <View style={styles.postPreviewBody}>
+                        <View style={styles.postPreviewTopRow}>
+                          <Text style={styles.postPreviewLabel}>
+                            {getPostPreviewLabel(post)}
+                          </Text>
+
+                          <Text style={styles.postPreviewDate}>
+                            {new Date(
+                              post.createdAt,
+                            ).toLocaleDateString()}
+                          </Text>
+                        </View>
+
+                        <Text
+                          style={styles.postPreviewText}
+                          numberOfLines={2}
+                        >
+                          {getPostPreviewText(post)}
+                        </Text>
+
+                        <Text style={styles.postPreviewMeta}>
+                          {post.visibility.replace('_', ' ')}
+                          {post.editedAt ? ' • Edited' : ''}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  ))}
+                </>
+              ) : (
+                <View style={styles.postPreview}>
+                  <Ionicons
+                    name="create-outline"
+                    size={30}
+                    color={colors.muted}
+                  />
+
+                  <Text style={styles.postPreviewTitle}>
+                    No posts yet
+                  </Text>
+
+                  <Text style={styles.postPreviewText}>
+                    Your photos, videos, resources and updates will appear here.
+                  </Text>
+
+                  <Pressable
+                    style={styles.createPostButton}
+                    onPress={() => router.push('/create')}
+                  >
+                    <Ionicons
+                      name="add"
+                      size={18}
+                      color={colors.text}
+                    />
+                    <Text style={styles.createPostButtonText}>
+                      Create Post
+                    </Text>
+                  </Pressable>
+                </View>
+              )}
+            </View>
+          ) : (
+            <>
+              <View style={styles.profileSection}>
+                <View style={styles.profileSectionHeader}>
+                  <Text style={styles.sectionTitle}>
+                    School profile
+                  </Text>
+
+                  <Pressable
+                    onPress={() => router.push('/edit-profile')}
+                  >
+                    <Ionicons
+                      name="create-outline"
+                      size={19}
+                      color={colors.accent}
+                    />
+                  </Pressable>
+                </View>
+
+                {identity?.schoolName ? (
+                  <Detail
+                    icon="school-outline"
+                    label={identity.schoolName}
+                  />
+                ) : null}
+
+                {identity?.form ? (
+                  <Detail
+                    icon="book-outline"
+                    label={identity.form}
+                  />
+                ) : null}
+
+                {identity?.stream ? (
+                  <Detail
+                    icon="people-outline"
+                    label={identity.stream}
+                  />
+                ) : null}
+
+                {identity?.house ? (
+                  <Detail
+                    icon="home-outline"
+                    label={`House ${identity.house}`}
+                  />
+                ) : null}
+
+                {identity?.boardingStatus &&
+                identity.boardingStatus !== 'unknown' ? (
+                  <Detail
+                    icon="bed-outline"
+                    label={
+                      identity.boardingStatus === 'boarding'
+                        ? 'Boarding'
+                        : 'Day scholar'
+                    }
+                  />
+                ) : null}
+              </View>
+
+              {(identity?.schoolName ||
+                identity?.form ||
+                identity?.stream) ? (
+                <View style={styles.profileSection}>
+                  <Text style={styles.sectionTitle}>
+                    Academic profile
+                  </Text>
+
+                  {identity.schoolName ? (
+                    <ProfileInfo
+                      icon="business-outline"
+                      label="School"
+                      value={identity.schoolName}
+                    />
+                  ) : null}
+
+                  {identity.form ? (
+                    <ProfileInfo
+                      icon="school-outline"
+                      label="Form"
+                      value={identity.form}
+                    />
+                  ) : null}
+
+                  {identity.stream ? (
+                    <ProfileInfo
+                      icon="people-outline"
+                      label="Stream"
+                      value={identity.stream}
+                    />
+                  ) : null}
+                </View>
+              ) : null}
+
+              {(identity?.clubs?.length ||
+                identity?.societies?.length) ? (
+                <View style={styles.profileSection}>
+                  <Text style={styles.sectionTitle}>
+                    Clubs & societies
+                  </Text>
+
+                  <View style={styles.tagList}>
+                    {[
+                      ...(identity.clubs ?? []),
+                      ...(identity.societies ?? []),
+                    ].map((item, index) => (
+                      <View
+                        key={`${item}-${index}`}
+                        style={styles.profileTag}
+                      >
+                        <Ionicons
+                          name="people-outline"
+                          size={14}
+                          color={colors.accent}
+                        />
+                        <Text style={styles.profileTagText}>
+                          {item}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              ) : null}
+
+              {identity?.interests?.length ? (
+                <View style={styles.profileSection}>
+                  <Text style={styles.sectionTitle}>
+                    Interests
+                  </Text>
+
+                  <View style={styles.tagList}>
+                    {identity.interests.map((interest) => (
+                      <View
+                        key={interest}
+                        style={styles.profileTag}
+                      >
+                        <Ionicons
+                          name="sparkles-outline"
+                          size={14}
+                          color={colors.blue}
+                        />
+                        <Text style={styles.profileTagText}>
+                          {interest}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              ) : null}
+
+              <View style={styles.profileSection}>
+                <Text style={styles.sectionTitle}>
+                  Your Hi-Link
+                </Text>
+
+                <ProfileRow
+                  icon="repeat-outline"
+                  title="Reshared"
+                  subtitle="Posts you have reshared"
+                  onPress={() => {
+                    if (identity) {
+                      router.push({
+                        pathname: '/profile/[id]/reshared',
+                        params: { id: identity.id },
+                      });
+                    }
+                  }}
+                />
+
+                <ProfileRow
+                  icon="bookmark-outline"
+                  title="Saved resources"
+                  subtitle="Notes, exams and study materials"
+                  onPress={() => router.push('/saved')}
+                />
+
+                <ProfileRow
+                  icon="school-outline"
+                  title="Academics"
+                  subtitle="CBC/CBE learning, subjects and study resources"
+                  onPress={() => router.push('/academics')}
+                />
+
+                <ProfileRow
+                  icon="download-outline"
+                  title="Downloads"
+                  subtitle="Files available offline"
+                />
+
+                <ProfileRow
+                  icon="shield-checkmark-outline"
+                  title="Privacy & Security"
+                  subtitle="Control your safety and visibility"
+                  onPress={() =>
+                    router.push('/privacy-security')
+                  }
+                />
+
+                <ProfileRow
+                  icon="settings-outline"
+                  title="Settings"
+                  subtitle="App preferences and video settings"
+                  onPress={() =>
+                    router.push('/video-settings')
+                  }
+                />
+              </View>
+            </>
+          )}
         </View>
       </ScrollView>
     </View>
   );
+}
+
+function getPostPreviewIcon(post: Post) {
+  switch (post.type) {
+    case 'photo':
+      return 'image-outline';
+    case 'video':
+      return 'videocam-outline';
+    case 'document':
+      return 'document-text-outline';
+    case 'study_resource':
+      return 'school-outline';
+    case 'question':
+      return 'help-circle-outline';
+    case 'event':
+      return 'calendar-outline';
+    default:
+      return 'chatbubble-ellipses-outline';
+  }
+}
+
+function getPostPreviewLabel(post: Post) {
+  switch (post.type) {
+    case 'photo':
+      return 'Photo';
+    case 'video':
+      return 'Video';
+    case 'document':
+      return 'Document';
+    case 'study_resource':
+      return 'Study resource';
+    case 'question':
+      return 'Question';
+    case 'event':
+      return 'Event';
+    default:
+      return 'Post';
+  }
+}
+
+function getPostPreviewText(post: Post) {
+  if (post.text?.trim()) {
+    return post.text.trim();
+  }
+
+  if (post.attachment?.name) {
+    return post.attachment.name;
+  }
+
+  return getPostPreviewLabel(post);
 }
 
 function Detail({
@@ -391,6 +880,9 @@ function Detail({
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
 }) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.detail}>
       <Ionicons
@@ -399,6 +891,39 @@ function Detail({
         color={colors.muted}
       />
       <Text style={styles.detailText}>{label}</Text>
+    </View>
+  );
+}
+
+function ProfileInfo({
+  icon,
+  label,
+  value,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  value: string;
+}) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
+  return (
+    <View style={styles.profileInfo}>
+      <Ionicons
+        name={icon}
+        size={18}
+        color={colors.accent}
+      />
+
+      <View style={styles.profileInfoText}>
+        <Text style={styles.profileInfoLabel}>
+          {label}
+        </Text>
+
+        <Text style={styles.profileInfoValue}>
+          {value}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -414,6 +939,9 @@ function ProfileRow({
   subtitle: string;
   onPress?: () => void;
 }) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   return (
     <Pressable
       style={styles.row}
@@ -423,7 +951,7 @@ function ProfileRow({
         <Ionicons
           name={icon}
           size={21}
-          color={colors.exileGreen}
+          color={colors.accent}
         />
       </View>
 
@@ -441,7 +969,8 @@ function ProfileRow({
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
@@ -461,7 +990,7 @@ const styles = StyleSheet.create({
   },
 
   topTitle: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 26,
     fontWeight: '800',
   },
@@ -493,7 +1022,7 @@ const styles = StyleSheet.create({
 
   cover: {
     width: '100%',
-    backgroundColor: colors.charcoal2,
+    backgroundColor: colors.cardRaised,
     position: 'relative',
   },
 
@@ -508,7 +1037,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 7,
-    backgroundColor: colors.charcoal2,
+    backgroundColor: colors.cardRaised,
     overflow: 'hidden',
   },
 
@@ -517,7 +1046,7 @@ const styles = StyleSheet.create({
     width: 190,
     height: 190,
     borderRadius: 95,
-    backgroundColor: colors.exileGreenDark,
+    backgroundColor: colors.accentDark,
     opacity: 0.28,
     top: -80,
     left: -55,
@@ -528,7 +1057,7 @@ const styles = StyleSheet.create({
     width: 220,
     height: 220,
     borderRadius: 110,
-    backgroundColor: colors.exileBlueDark,
+    backgroundColor: colors.blueDark,
     opacity: 0.30,
     bottom: -125,
     right: -70,
@@ -546,7 +1075,7 @@ const styles = StyleSheet.create({
   },
 
   coverPlaceholderText: {
-    color: colors.whiteMuted,
+    color: colors.textSecondary,
     fontSize: 13,
     fontWeight: '700',
   },
@@ -572,11 +1101,11 @@ const styles = StyleSheet.create({
   },
 
   avatarWrapper: {
-    backgroundColor: colors.exileGreen,
+    backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    shadowColor: colors.exileGreen,
+    shadowColor: colors.accent,
     shadowOpacity: 0.35,
     shadowRadius: 12,
     shadowOffset: {
@@ -591,7 +1120,7 @@ const styles = StyleSheet.create({
   },
 
   avatarPlaceholder: {
-    backgroundColor: colors.charcoal2,
+    backgroundColor: colors.cardRaised,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -603,7 +1132,7 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: colors.exileGreen,
+    backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
@@ -611,7 +1140,7 @@ const styles = StyleSheet.create({
   },
 
   name: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 23,
     fontWeight: '800',
     marginTop: 10,
@@ -638,7 +1167,7 @@ const styles = StyleSheet.create({
   },
 
   schoolText: {
-    color: colors.whiteMuted,
+    color: colors.textSecondary,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -665,7 +1194,7 @@ const styles = StyleSheet.create({
   },
 
   detailText: {
-    color: colors.whiteMuted,
+    color: colors.textSecondary,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -675,7 +1204,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 46,
     borderRadius: 14,
-    backgroundColor: colors.exileGreen,
+    backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -693,7 +1222,7 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 19,
     fontWeight: '800',
     marginBottom: 10,
@@ -728,7 +1257,7 @@ const styles = StyleSheet.create({
   },
 
   rowTitle: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 15,
     fontWeight: '700',
   },
@@ -738,4 +1267,301 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 3,
   },
+
+  profileStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 16,
+    marginBottom: 12,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+  },
+
+  profileStat: {
+    alignItems: 'center',
+    minWidth: 80,
+  },
+
+  profileStatValue: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+
+  profileStatLabel: {
+    color: colors.muted,
+    fontSize: 12,
+    marginTop: 3,
+  },
+
+  profileStatDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: colors.border,
+  },
+
+  profileActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 4,
+  },
+
+  profileActionPrimary: {
+    flex: 1,
+    minHeight: 46,
+    borderRadius: 14,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 7,
+  },
+
+  profileActionPrimaryText: {
+    color: colors.background,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+
+  profileActionSecondary: {
+    flex: 1,
+    minHeight: 46,
+    borderRadius: 14,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 7,
+  },
+
+  profileActionSecondaryText: {
+    color: colors.accent,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+
+  profileSection: {
+    marginTop: 22,
+  },
+  profileTabs: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    marginBottom: 4,
+  },
+
+  profileTab: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+
+  profileTabActive: {
+    borderBottomColor: colors.accent,
+  },
+
+  profileTabText: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    color: colors.muted,
+  },
+
+  profileTabTextActive: {
+    color: colors.accent,
+  },
+
+  bioText: {
+    marginTop: 6,
+    marginBottom: 4,
+    paddingHorizontal: 18,
+    textAlign: 'center',
+    color: colors.textSecondary,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+
+  bioPlaceholder: {
+    marginTop: 6,
+    marginBottom: 4,
+    paddingHorizontal: 18,
+    textAlign: 'center',
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 18,
+    fontStyle: 'italic',
+  },
+
+  profileSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+
+
+  profileInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 9,
+    gap: 12,
+  },
+
+  profileInfoText: {
+    flex: 1,
+  },
+
+  profileInfoLabel: {
+    color: colors.muted,
+    fontSize: 11,
+  },
+
+  profileInfoValue: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    marginTop: 2,
+  },
+
+  tagList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+
+  profileTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 14,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+
+  profileTagText: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  postsTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+
+  viewAllText: {
+    color: colors.accent,
+    fontSize: 13,
+    fontWeight: '800',
+    marginBottom: 12,
+  },
+
+  postsCountLabel: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+
+  postPreviewCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    marginBottom: 8,
+    borderRadius: 14,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+
+  postPreviewIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background,
+    marginRight: 10,
+  },
+
+  postPreviewBody: {
+    flex: 1,
+  },
+
+  postPreviewTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 3,
+  },
+
+  postPreviewLabel: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+
+  postPreviewDate: {
+    color: colors.muted,
+    fontSize: 10,
+  },
+
+  postPreview: {
+    minHeight: 145,
+    borderRadius: 18,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 25,
+  },
+
+  postPreviewTitle: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '800',
+    marginTop: 9,
+  },
+
+  postPreviewMeta: {
+    color: colors.muted,
+    fontSize: 10,
+    marginTop: 5,
+    textTransform: 'capitalize',
+  },
+
+  createPostButton: {
+    marginTop: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: colors.accent,
+  },
+
+  createPostButtonText: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+
+  postPreviewText: {
+    color: colors.muted,
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: 5,
+  },
 });
+}

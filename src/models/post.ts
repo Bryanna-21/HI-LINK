@@ -70,7 +70,14 @@ export interface Post {
   likes: number;
   comments: number;
   shares: number;
+  reshares: number;
   saves: number;
+
+  /**
+   * Set when this dispatch is an in-app reshare
+   * of another dispatch.
+   */
+  resharedFromId?: string;
 
   createdAt: string;
   updatedAt: string;

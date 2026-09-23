@@ -15,7 +15,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-import { colors } from '../src/theme/colors';
+import { ThemeColors, useTheme } from '../src/theme/ThemeProvider';
 import { getIdentity, saveIdentity } from '../src/storage/identity';
 import { HiLinkUser } from '../src/models/user';
 
@@ -48,14 +48,22 @@ const HOUSES = [
 type StudentType = 'boarding' | 'day' | 'unknown';
 
 export default function EditProfile() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   const [identity, setIdentity] = useState<HiLinkUser | null>(null);
 
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [bio, setBio] = useState('');
 
+  const [schoolName, setSchoolName] = useState('');
   const [form, setForm] = useState('');
   const [stream, setStream] = useState('');
+  const [clubs, setClubs] = useState('');
+  const [societies, setSocieties] = useState('');
+  const [interests, setInterests] = useState('');
+
   const [house, setHouse] = useState('');
   const [studentType, setStudentType] =
     useState<StudentType>('unknown');
@@ -85,8 +93,13 @@ export default function EditProfile() {
     setUsername(user.username ?? '');
     setBio(user.bio ?? '');
 
+    setSchoolName(user.schoolName ?? '');
     setForm(user.form ?? '');
     setStream(user.stream ?? '');
+    setClubs((user.clubs ?? []).join(', '));
+    setSocieties((user.societies ?? []).join(', '));
+    setInterests((user.interests ?? []).join(', '));
+
     setHouse(user.house ?? '');
 
     setStudentType(user.boardingStatus ?? 'unknown');
@@ -109,8 +122,7 @@ export default function EditProfile() {
     const result =
       await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: type === 'cover' ? [16, 7] : [1, 1],
+        allowsEditing: false,
         quality: 0.9,
       });
 
@@ -171,11 +183,24 @@ export default function EditProfile() {
         username: cleanUsername,
         bio: bio.trim() || undefined,
 
-        form: form || undefined,
-        stream:
-          stream === 'None'
-            ? undefined
-            : stream || undefined,
+        schoolName: schoolName.trim() || undefined,
+        form: form.trim() || undefined,
+        stream: stream.trim() || undefined,
+
+        clubs: clubs
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean),
+
+        societies: societies
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean),
+
+        interests: interests
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean),
 
         house: house || undefined,
 
@@ -242,7 +267,7 @@ export default function EditProfile() {
           <Ionicons
             name="arrow-back"
             size={24}
-            color={colors.white}
+            color={colors.text}
           />
         </Pressable>
 
@@ -284,7 +309,7 @@ export default function EditProfile() {
                 <Ionicons
                   name="image-outline"
                   size={28}
-                  color={colors.exileGreen}
+                  color={colors.accent}
                 />
                 <Text style={styles.coverText}>
                   Add cover image
@@ -296,7 +321,7 @@ export default function EditProfile() {
               <Ionicons
                 name="camera"
                 size={18}
-                color={colors.white}
+                color={colors.text}
               />
             </View>
           </Pressable>
@@ -315,7 +340,7 @@ export default function EditProfile() {
                 <Ionicons
                   name="person"
                   size={44}
-                  color={colors.exileGreen}
+                  color={colors.accent}
                 />
               )}
 
@@ -323,7 +348,7 @@ export default function EditProfile() {
                 <Ionicons
                   name="camera"
                   size={14}
-                  color={colors.white}
+                  color={colors.text}
                 />
               </View>
             </Pressable>
@@ -357,6 +382,68 @@ export default function EditProfile() {
             multiline
             maxLength={160}
           />
+        </Section>
+
+        <Section title="Academic profile">
+          <Field
+            label="School"
+            value={schoolName}
+            onChangeText={setSchoolName}
+            placeholder="e.g. Kabarak High School"
+            maxLength={100}
+          />
+
+          <Field
+            label="Form"
+            value={form}
+            onChangeText={setForm}
+            placeholder="e.g. BSc Computer Science"
+            maxLength={100}
+          />
+
+          <Field
+            label="Stream"
+            value={stream}
+            onChangeText={setStream}
+            placeholder="e.g. Year 2"
+            maxLength={30}
+          />
+        </Section>
+
+        <Section title="Clubs & societies">
+          <Field
+            label="Clubs"
+            value={clubs}
+            onChangeText={setClubs}
+            placeholder="Football Club, Coding Club"
+            maxLength={200}
+          />
+
+          <Field
+            label="Societies"
+            value={societies}
+            onChangeText={setSocieties}
+            placeholder="Debate Society, Tech Society"
+            maxLength={200}
+          />
+
+          <Text style={styles.privateNote}>
+            Separate multiple clubs or societies with commas.
+          </Text>
+        </Section>
+
+        <Section title="Interests">
+          <Field
+            label="Interests"
+            value={interests}
+            onChangeText={setInterests}
+            placeholder="Sports, technology, music, nature"
+            maxLength={200}
+          />
+
+          <Text style={styles.privateNote}>
+            Separate multiple interests with commas.
+          </Text>
         </Section>
 
         <Section title="School profile">
@@ -420,7 +507,7 @@ export default function EditProfile() {
             <Ionicons
               name="school-outline"
               size={22}
-              color={colors.exileGreen}
+              color={colors.accent}
             />
           </View>
 
@@ -470,6 +557,9 @@ function Section({
   title: string;
   children: React.ReactNode;
 }) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>
@@ -500,6 +590,9 @@ function Field({
   maxLength: number;
   autoCapitalize?: 'none' | 'sentences';
 }) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.field}>
       <Text style={styles.fieldLabel}>
@@ -546,6 +639,9 @@ function ChoiceGrid({
   selected: string;
   onSelect: (value: string) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.choiceGrid}>
       {values.map((value) => {
@@ -575,7 +671,8 @@ function ChoiceGrid({
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
@@ -589,7 +686,7 @@ const styles = StyleSheet.create({
   },
 
   loadingText: {
-    color: colors.whiteMuted,
+    color: colors.textSecondary,
     fontSize: 16,
   },
 
@@ -601,7 +698,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    backgroundColor: colors.charcoal,
+    backgroundColor: colors.cardRaised,
   },
 
   headerButton: {
@@ -613,7 +710,7 @@ const styles = StyleSheet.create({
 
   headerTitle: {
     flex: 1,
-    color: colors.white,
+    color: colors.text,
     fontSize: 18,
     fontWeight: '700',
     marginLeft: 4,
@@ -623,7 +720,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 999,
-    backgroundColor: colors.exileGreen,
+    backgroundColor: colors.accent,
   },
 
   saveButtonDisabled: {
@@ -631,7 +728,7 @@ const styles = StyleSheet.create({
   },
 
   saveButtonText: {
-    color: colors.black,
+    color: colors.background,
     fontSize: 14,
     fontWeight: '800',
   },
@@ -642,12 +739,12 @@ const styles = StyleSheet.create({
 
   mediaSection: {
     height: 155,
-    backgroundColor: colors.charcoal,
+    backgroundColor: colors.cardRaised,
   },
 
   cover: {
     height: 100,
-    backgroundColor: colors.charcoal2,
+    backgroundColor: colors.cardRaised,
     overflow: 'hidden',
     position: 'relative',
   },
@@ -665,7 +762,7 @@ const styles = StyleSheet.create({
 
   coverText: {
     marginTop: 8,
-    color: colors.whiteMuted,
+    color: colors.textSecondary,
     fontSize: 14,
   },
 
@@ -693,9 +790,9 @@ const styles = StyleSheet.create({
     width: 76,
     height: 76,
     borderRadius: 38,
-    backgroundColor: colors.charcoal2,
+    backgroundColor: colors.cardRaised,
     borderWidth: 4,
-    borderColor: colors.exileGreen,
+    borderColor: colors.accent,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
@@ -713,11 +810,11 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: colors.exileBlue,
+    backgroundColor: colors.blue,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: colors.charcoal,
+    borderColor: colors.border,
   },
 
   section: {
@@ -726,7 +823,7 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 18,
     fontWeight: '800',
     marginBottom: 14,
@@ -737,7 +834,7 @@ const styles = StyleSheet.create({
   },
 
   fieldLabel: {
-    color: colors.whiteMuted,
+    color: colors.textSecondary,
     fontSize: 13,
     fontWeight: '700',
     marginBottom: 8,
@@ -760,14 +857,14 @@ const styles = StyleSheet.create({
   },
 
   inputPrefix: {
-    color: colors.exileGreen,
+    color: colors.accent,
     fontSize: 16,
     fontWeight: '700',
   },
 
   input: {
     flex: 1,
-    color: colors.white,
+    color: colors.text,
     fontSize: 16,
     paddingVertical: 12,
   },
@@ -797,17 +894,17 @@ const styles = StyleSheet.create({
 
   choiceActive: {
     backgroundColor: 'rgba(25,230,140,0.14)',
-    borderColor: colors.exileGreen,
+    borderColor: colors.accent,
   },
 
   choiceText: {
-    color: colors.whiteMuted,
+    color: colors.textSecondary,
     fontSize: 14,
     fontWeight: '600',
   },
 
   choiceTextActive: {
-    color: colors.exileGreen,
+    color: colors.accent,
     fontWeight: '800',
   },
 
@@ -844,7 +941,7 @@ const styles = StyleSheet.create({
   },
 
   schoolName: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 15,
     fontWeight: '700',
   },
@@ -863,14 +960,15 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     minHeight: 52,
     borderRadius: 16,
-    backgroundColor: colors.exileGreen,
+    backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   bottomSaveText: {
-    color: colors.black,
+    color: colors.background,
     fontSize: 16,
     fontWeight: '800',
   },
 });
+}

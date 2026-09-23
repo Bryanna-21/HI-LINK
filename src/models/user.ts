@@ -12,9 +12,9 @@ export type BoardingStatus =
 export interface HiLinkUser {
   id: string;
   hilinkId: string;
-
   name: string;
   username: string;
+
   bio?: string;
 
   role: HiLinkRole;
@@ -22,13 +22,23 @@ export interface HiLinkUser {
   schoolId?: string;
   schoolName?: string;
 
-  admissionNumber?: string;
-  studentId?: string;
-  staffNumber?: string;
-
   form?: string;
   stream?: string;
   className?: string;
+
+  subjects?: string[];
+
+  clubs?: string[];
+  societies?: string[];
+  interests?: string[];
+  sports?: string[];
+
+  followersCount?: number;
+  followingCount?: number;
+
+  admissionNumber?: string;
+  studentId?: string;
+  staffNumber?: string;
 
   boardingStatus?: BoardingStatus;
   house?: string;

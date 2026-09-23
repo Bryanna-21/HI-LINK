@@ -13,7 +13,7 @@ import {
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-import { colors } from '../src/theme/colors';
+import { ThemeColors, useTheme } from '../src/theme/ThemeProvider';
 import { saveIdentity } from '../src/storage/identity';
 import { setOnboardingComplete } from '../src/storage/onboarding';
 import { HiLinkUser } from '../src/models/user';
@@ -64,6 +64,9 @@ const HOUSES = [
 ];
 
 export default function OnboardingScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   const [step, setStep] = useState(0);
 
   const [school, setSchool] = useState('');
@@ -276,7 +279,7 @@ export default function OnboardingScreen() {
             <Ionicons
               name="arrow-back"
               size={20}
-              color={colors.white}
+              color={colors.text}
             />
           </Pressable>
         ) : (
@@ -313,6 +316,9 @@ function SchoolStep({
   school: string;
   setSchool: (value: string) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   return (
     <View>
       <Text style={styles.eyebrow}>WELCOME TO HI-LINK</Text>
@@ -366,6 +372,9 @@ function IdentificationStep({
   value: string;
   setValue: (value: string) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   return (
     <View>
       <Text style={styles.eyebrow}>
@@ -426,7 +435,7 @@ function IdentificationStep({
           <Ionicons
             name="information-circle-outline"
             size={22}
-            color={colors.exileBlue}
+            color={colors.blue}
           />
 
           <Text style={styles.infoText}>
@@ -459,6 +468,9 @@ function AcademicStep({
   studentType: StudentType;
   setStudentType: (value: StudentType) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   return (
     <View>
       <Text style={styles.eyebrow}>
@@ -555,6 +567,9 @@ function ProfileStep({
   username: string;
   setUsername: (value: string) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   return (
     <View>
       <Text style={styles.eyebrow}>
@@ -599,7 +614,7 @@ function ProfileStep({
         <Ionicons
           name="sparkles-outline"
           size={20}
-          color={colors.exileGreen}
+          color={colors.accent}
         />
 
         <Text style={styles.infoText}>
@@ -621,6 +636,9 @@ function ReadyStep({
   form: string;
   stream: string;
 }) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   return (
     <View>
       <View style={styles.readyIcon}>
@@ -676,6 +694,9 @@ function Choice({
   onPress: () => void;
   icon: keyof typeof Ionicons.glyphMap;
 }) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   return (
     <Pressable
       onPress={onPress}
@@ -697,7 +718,7 @@ function Choice({
           color={
             selected
               ? colors.background
-              : colors.exileGreen
+              : colors.accent
           }
         />
       </View>
@@ -718,7 +739,7 @@ function Choice({
         <Ionicons
           name="checkmark-circle"
           size={22}
-          color={colors.exileGreen}
+          color={colors.accent}
         />
       ) : null}
     </Pressable>
@@ -734,6 +755,9 @@ function SmallChoice({
   selected: boolean;
   onPress: () => void;
 }) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   return (
     <Pressable
       onPress={onPress}
@@ -762,6 +786,9 @@ function SummaryRow({
   label: string;
   value: string;
 }) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.summaryRow}>
       <Text style={styles.summaryLabel}>
@@ -775,7 +802,7 @@ function SummaryRow({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
@@ -799,7 +826,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: colors.exileGreen,
+    backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -811,7 +838,7 @@ const styles = StyleSheet.create({
   },
 
   brandText: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 15,
     fontWeight: '900',
     letterSpacing: 1.5,
@@ -830,7 +857,7 @@ const styles = StyleSheet.create({
 
   progress: {
     height: 3,
-    backgroundColor: colors.exileGreen,
+    backgroundColor: colors.accent,
   },
 
   content: {
@@ -839,7 +866,7 @@ const styles = StyleSheet.create({
   },
 
   eyebrow: {
-    color: colors.exileGreen,
+    color: colors.accent,
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 1.5,
@@ -847,14 +874,14 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 31,
     lineHeight: 37,
     fontWeight: '900',
   },
 
   description: {
-    color: colors.whiteMuted,
+    color: colors.muted,
     fontSize: 15,
     lineHeight: 23,
     marginTop: 12,
@@ -868,7 +895,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: 15,
     paddingHorizontal: 16,
-    color: colors.white,
+    color: colors.text,
     fontSize: 15,
     marginBottom: 12,
   },
@@ -891,21 +918,21 @@ const styles = StyleSheet.create({
   },
 
   choiceSelected: {
-    borderColor: colors.exileGreen,
-    backgroundColor: 'rgba(25,230,140,0.08)',
+    borderColor: colors.accent,
+    backgroundColor: colors.accentSoft,
   },
 
   choiceIcon: {
     width: 44,
     height: 44,
     borderRadius: 13,
-    backgroundColor: colors.charcoal2,
+    backgroundColor: colors.cardRaised,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   choiceIconSelected: {
-    backgroundColor: colors.exileGreen,
+    backgroundColor: colors.accent,
   },
 
   choiceText: {
@@ -913,7 +940,7 @@ const styles = StyleSheet.create({
   },
 
   choiceLabel: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 15,
     fontWeight: '700',
   },
@@ -926,7 +953,7 @@ const styles = StyleSheet.create({
   },
 
   fieldLabel: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 14,
     fontWeight: '800',
     marginBottom: 9,
@@ -953,12 +980,12 @@ const styles = StyleSheet.create({
   },
 
   smallChoiceSelected: {
-    backgroundColor: colors.exileGreen,
-    borderColor: colors.exileGreen,
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
   },
 
   smallChoiceText: {
-    color: colors.whiteMuted,
+    color: colors.muted,
     fontSize: 13,
     fontWeight: '700',
   },
@@ -976,9 +1003,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     padding: 14,
-    backgroundColor: 'rgba(47,128,255,0.08)',
+    backgroundColor: colors.blueSoft,
     borderWidth: 1,
-    borderColor: 'rgba(47,128,255,0.22)',
+    borderColor: colors.blue,
     borderRadius: 15,
     marginTop: 8,
   },
@@ -987,16 +1014,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     padding: 15,
-    backgroundColor: 'rgba(25,230,140,0.07)',
+    backgroundColor: colors.accentSoft,
     borderWidth: 1,
-    borderColor: 'rgba(25,230,140,0.18)',
+    borderColor: colors.accent,
     borderRadius: 15,
     marginTop: 10,
   },
 
   infoText: {
     flex: 1,
-    color: colors.whiteMuted,
+    color: colors.muted,
     fontSize: 13,
     lineHeight: 20,
   },
@@ -1005,7 +1032,7 @@ const styles = StyleSheet.create({
     width: 74,
     height: 74,
     borderRadius: 37,
-    backgroundColor: colors.exileGreen,
+    backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 22,
@@ -1035,7 +1062,7 @@ const styles = StyleSheet.create({
 
   summaryValue: {
     flex: 1,
-    color: colors.white,
+    color: colors.text,
     fontSize: 13,
     fontWeight: '700',
     textAlign: 'right',
@@ -1074,7 +1101,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 54,
     borderRadius: 16,
-    backgroundColor: colors.exileGreen,
+    backgroundColor: colors.accent,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

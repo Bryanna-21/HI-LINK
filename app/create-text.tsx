@@ -14,7 +14,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { colors } from '../src/theme/colors';
+import {
+  ThemeColors,
+  useTheme,
+} from '../src/theme/ThemeProvider';
 import { Post, PostVisibility } from '../src/models/post';
 import { getIdentity } from '../src/storage/identity';
 import { getPosts, updatePost, addPost } from '../src/storage/posts';
@@ -50,6 +53,9 @@ function normalizeTags(value: string): string[] {
 }
 
 export default function CreateTextScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   const { editId } = useLocalSearchParams<{
     editId?: string;
   }>();
@@ -291,6 +297,7 @@ export default function CreateTextScreen() {
           likes: 0,
           comments: 0,
           shares: 0,
+          reshares: 0,
           saves: 0,
 
           createdAt: now,
@@ -322,7 +329,7 @@ export default function CreateTextScreen() {
         <View style={styles.loading}>
           <ActivityIndicator
             size="large"
-            color={colors.exileGreen}
+            color={colors.accent}
           />
         </View>
       </SafeAreaView>
@@ -343,7 +350,7 @@ export default function CreateTextScreen() {
             <Ionicons
               name="arrow-back"
               size={24}
-              color={colors.white}
+              color={colors.text}
             />
           </Pressable>
 
@@ -502,7 +509,7 @@ export default function CreateTextScreen() {
           <Ionicons
             name="shield-checkmark-outline"
             size={22}
-            color={colors.exileGreen}
+            color={colors.accent}
           />
 
           <View style={styles.safetyCopy}>
@@ -529,7 +536,7 @@ export default function CreateTextScreen() {
         >
           {saving ? (
             <ActivityIndicator
-              color={colors.black}
+              color={colors.background}
             />
           ) : (
             <Text style={styles.publishText}>
@@ -553,6 +560,9 @@ function SettingRow({
   value: boolean;
   onChange: (value: boolean) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.settingRow}>
       <Text style={styles.settingTitle}>
@@ -564,17 +574,18 @@ function SettingRow({
         onValueChange={onChange}
         trackColor={{
           false: colors.border,
-          true: colors.exileGreenDark,
+          true: colors.accentDark,
         }}
         thumbColor={
-          value ? colors.exileGreen : colors.whiteMuted
+          value ? colors.accent : colors.textSecondary
         }
       />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background,
@@ -603,13 +614,13 @@ const styles = StyleSheet.create({
     borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.charcoal,
+    backgroundColor: colors.cardRaised,
   },
 
   title: {
     flex: 1,
     marginLeft: 12,
-    color: colors.white,
+    color: colors.text,
     fontSize: 21,
     fontWeight: '700',
   },
@@ -619,7 +630,7 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 16,
     fontWeight: '700',
     marginBottom: 9,
@@ -631,8 +642,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.charcoal,
-    color: colors.white,
+    backgroundColor: colors.cardRaised,
+    color: colors.text,
     padding: 16,
     fontSize: 17,
     lineHeight: 25,
@@ -651,8 +662,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.charcoal,
-    color: colors.white,
+    backgroundColor: colors.cardRaised,
+    color: colors.text,
     paddingHorizontal: 14,
     fontSize: 15,
   },
@@ -674,24 +685,24 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.charcoal,
+    backgroundColor: colors.cardRaised,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   chipSelected: {
-    backgroundColor: colors.exileGreen,
-    borderColor: colors.exileGreen,
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
   },
 
   chipText: {
-    color: colors.whiteMuted,
+    color: colors.textSecondary,
     fontSize: 13,
     fontWeight: '600',
   },
 
   chipTextSelected: {
-    color: colors.black,
+    color: colors.background,
   },
 
   audienceGrid: {
@@ -706,30 +717,30 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.charcoal,
+    backgroundColor: colors.cardRaised,
     justifyContent: 'center',
   },
 
   audienceSelected: {
-    borderColor: colors.exileGreen,
-    backgroundColor: '#0D2A20',
+    borderColor: colors.accent,
+    backgroundColor: colors.accentSoft,
   },
 
   audienceText: {
-    color: colors.whiteMuted,
+    color: colors.textSecondary,
     fontSize: 13,
     fontWeight: '600',
   },
 
   audienceTextSelected: {
-    color: colors.exileGreen,
+    color: colors.accent,
   },
 
   settingsCard: {
     borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.charcoal,
+    backgroundColor: colors.cardRaised,
     paddingHorizontal: 14,
   },
 
@@ -743,7 +754,7 @@ const styles = StyleSheet.create({
   },
 
   settingTitle: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -754,7 +765,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.charcoal,
+    backgroundColor: colors.cardRaised,
     flexDirection: 'row',
     gap: 12,
   },
@@ -764,7 +775,7 @@ const styles = StyleSheet.create({
   },
 
   safetyTitle: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -779,7 +790,7 @@ const styles = StyleSheet.create({
   publishButton: {
     minHeight: 52,
     borderRadius: 15,
-    backgroundColor: colors.exileGreen,
+    backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 20,
@@ -790,7 +801,7 @@ const styles = StyleSheet.create({
   },
 
   publishText: {
-    color: colors.black,
+    color: colors.background,
     fontSize: 16,
     fontWeight: '800',
   },

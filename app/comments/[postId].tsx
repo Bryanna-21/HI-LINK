@@ -19,7 +19,7 @@ import {
 } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-import { colors } from '../../src/theme/colors';
+import { ThemeColors, useTheme } from '../../src/theme/ThemeProvider';
 import { PostComment } from '../../src/models/comment';
 import { getIdentity } from '../../src/storage/identity';
 import {
@@ -33,6 +33,9 @@ import {
 } from '../../src/storage/posts';
 
 export default function CommentsScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   const { postId } =
     useLocalSearchParams<{ postId: string }>();
 
@@ -193,7 +196,7 @@ export default function CommentsScreen() {
           <Ionicons
             name="arrow-back"
             size={23}
-            color={colors.white}
+            color={colors.text}
           />
         </Pressable>
 
@@ -214,7 +217,7 @@ export default function CommentsScreen() {
         <View style={styles.loading}>
           <ActivityIndicator
             size="large"
-            color={colors.exileGreen}
+            color={colors.accent}
           />
         </View>
       ) : (
@@ -237,6 +240,8 @@ export default function CommentsScreen() {
               onDelete={() =>
                 handleDeleteComment(item)
               }
+              colors={colors}
+              styles={styles}
             />
           )}
           ListEmptyComponent={
@@ -245,7 +250,7 @@ export default function CommentsScreen() {
                 <Ionicons
                   name="chatbubble-outline"
                   size={30}
-                  color={colors.exileGreen}
+                  color={colors.accent}
                 />
               </View>
 
@@ -306,10 +311,14 @@ function CommentRow({
   comment,
   isMine,
   onDelete,
+  colors,
+  styles,
 }: {
   comment: PostComment;
   isMine: boolean;
   onDelete: () => void;
+  colors: ThemeColors;
+  styles: ReturnType<typeof createStyles>;
 }) {
   return (
     <Pressable
@@ -331,7 +340,7 @@ function CommentRow({
           <Ionicons
             name="person"
             size={17}
-            color={colors.exileGreen}
+            color={colors.accent}
           />
         </View>
       )}
@@ -367,7 +376,7 @@ function CommentRow({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -398,7 +407,7 @@ const styles = StyleSheet.create({
   },
 
   headerTitle: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 18,
     fontWeight: '800',
   },
@@ -409,8 +418,8 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     overflow: 'hidden',
-    backgroundColor: colors.charcoal2,
-    color: colors.whiteMuted,
+    backgroundColor: colors.cardRaised,
+    color: colors.textSecondary,
     fontSize: 12,
     fontWeight: '800',
     textAlign: 'center',
@@ -453,7 +462,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: colors.charcoal2,
+    backgroundColor: colors.cardRaised,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -476,7 +485,7 @@ const styles = StyleSheet.create({
 
   authorName: {
     flexShrink: 1,
-    color: colors.white,
+    color: colors.text,
     fontSize: 14,
     fontWeight: '800',
   },
@@ -488,7 +497,7 @@ const styles = StyleSheet.create({
   },
 
   commentText: {
-    color: colors.whiteMuted,
+    color: colors.textSecondary,
     fontSize: 14,
     lineHeight: 20,
     marginTop: 5,
@@ -511,13 +520,13 @@ const styles = StyleSheet.create({
     width: 68,
     height: 68,
     borderRadius: 34,
-    backgroundColor: colors.charcoal,
+    backgroundColor: colors.cardRaised,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   emptyTitle: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 18,
     fontWeight: '800',
     marginTop: 13,
@@ -537,7 +546,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingTop: 10,
     paddingBottom: 12,
-    backgroundColor: colors.charcoal,
+    backgroundColor: colors.cardRaised,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
@@ -554,7 +563,7 @@ const styles = StyleSheet.create({
   },
 
   input: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 14,
     lineHeight: 20,
     paddingHorizontal: 14,
@@ -566,7 +575,7 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: colors.exileGreen,
+    backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },

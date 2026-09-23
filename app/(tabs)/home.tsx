@@ -9,6 +9,7 @@ import {
 } from 'react';
 import {
   Alert,
+  Animated,
   Image,
   Pressable,
   RefreshControl,
@@ -25,7 +26,11 @@ import { router, useFocusEffect } from 'expo-router';
 import * as MediaLibrary from 'expo-media-library';
 import { VideoView, useVideoPlayer } from 'expo-video';
 
-import { colors } from '../../src/theme/colors';
+import {
+  ThemeColors,
+  useTheme,
+} from '../../src/theme/ThemeProvider';
+import HiLinkVideoFeed from '../../src/components/HiLinkVideoFeed';
 import {
   DEFAULT_VIDEO_SETTINGS,
   getVideoSettings,
@@ -34,6 +39,11 @@ import {
 import { Post } from '../../src/models/post';
 import { getIdentity } from '../../src/storage/identity';
 import {
+  getRecentlyWatchedVideoIds,
+  recordVideoWatch,
+} from '../../src/storage/videoHistory';
+import {
+  addPost,
   getPosts,
   updatePost,
 } from '../../src/storage/posts';
@@ -48,22 +58,72 @@ import {
   setPostReaction,
   PostReaction,
 } from '../../src/storage/postReactions';
+import {
+  isPostReshared,
+  addReshare,
+} from '../../src/storage/reshares';
+import { getFollowingIds } from '../../src/storage/follows';
+import { getKnownUsers } from '../../src/storage/users';
 
-const COLORS = {
-  background: '#070908',
-  surface: '#101512',
-  surfaceRaised: '#151B17',
-  border: '#242C27',
+const DISCOVERY_SPORTS = [
+  'football',
+  'soccer',
+  'rugby',
+  'basketball',
+  'volleyball',
+  'athletics',
+  'tennis',
+  'hockey',
+  'swimming',
+  'cricket',
+  'handball',
+  'netball',
+  'badminton',
+  'boxing',
+  'karate',
+  'taekwondo',
+  'chess',
+];
 
-  white: '#F8FAF8',
-  softWhite: '#DCE4DE',
-  muted: '#8D9991',
+function normalizeDiscoveryValue(value: string): string {
+  return value.trim().toLowerCase();
+}
 
-  green: '#19E68C',
-  greenSoft: '#123B2A',
+function matchesDiscoveryTerms(
+  values: string[] | undefined,
+  terms: string[],
+): boolean {
+  if (!values?.length || !terms.length) {
+    return false;
+  }
 
-  blue: '#2F80FF',
-  blueSoft: '#122747',
+  return values.some((value) => {
+    const normalizedValue =
+      normalizeDiscoveryValue(value);
+
+    return terms.some((term) => {
+      const normalizedTerm =
+        normalizeDiscoveryValue(term);
+
+      return (
+        normalizedValue === normalizedTerm ||
+        normalizedValue.includes(normalizedTerm) ||
+        normalizedTerm.includes(normalizedValue)
+      );
+    });
+  });
+}
+
+const REACTION_EMOJI: Record<
+  PostReaction,
+  string
+> = {
+  like: '❤️',
+  love: '💕',
+  laugh: '😂',
+  wow: '😮',
+  sad: '😢',
+  angry: '😡',
 };
 
 type HomeFeedSection = 'reels' | 'library' | 'feed';
@@ -79,6 +139,9 @@ type FeedHandle = {
 };
 
 export default function HomeScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   const { width } = useWindowDimensions();
   const feedRef =
     useRef<FeedHandle>(null);
@@ -405,20 +468,55 @@ const Feed = forwardRef<
   },
   ref,
 ) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   const [posts, setPosts] = useState<Post[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [identity, setIdentity] = useState<HiLinkUser | null>(null);
+  const [followingIds, setFollowingIds] =
+    useState<string[]>([]);
+  const [knownUsers, setKnownUsers] =
+    useState<HiLinkUser[]>([]);
+  const [recentlyWatched, setRecentlyWatched] =
+    useState<Post[]>([]);
   const [activeVideoPostId, setActiveVideoPostId] =
     useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
 
-    void getIdentity().then((currentIdentity) => {
-      if (mounted) {
-        setIdentity(currentIdentity);
+    void (async () => {
+      const [
+        currentIdentity,
+        currentKnownUsers,
+      ] = await Promise.all([
+        getIdentity(),
+        getKnownUsers(),
+      ]);
+
+      if (!mounted) {
+        return;
       }
-    });
+
+      setIdentity(currentIdentity);
+      setKnownUsers(currentKnownUsers);
+
+      if (currentIdentity) {
+        const currentFollowingIds =
+          await getFollowingIds(
+            currentIdentity.id,
+          );
+
+        if (mounted) {
+          setFollowingIds(
+            currentFollowingIds,
+          );
+        }
+      } else {
+        setFollowingIds([]);
+      }
+    })();
 
     return () => {
       mounted = false;
@@ -600,6 +698,28 @@ const Feed = forwardRef<
 
     const result = await getPosts();
 
+    const recentIds =
+      await getRecentlyWatchedVideoIds(10);
+
+    const recentMap = new Map(
+      result
+        .filter(
+          (post) =>
+            post.type === 'video' &&
+            post.attachment?.uri,
+        )
+        .map((post) => [post.id, post]),
+    );
+
+    setRecentlyWatched(
+      recentIds
+        .map((id) => recentMap.get(id))
+        .filter(
+          (post): post is Post =>
+            Boolean(post),
+        ),
+    );
+
     const { getBlockedUserIds } =
       await import(
         '../../src/storage/blockedUsers'
@@ -638,6 +758,10 @@ const Feed = forwardRef<
   useFocusEffect(
     useCallback(() => {
       load();
+
+      return () => {
+        setActiveVideoPostId(null);
+      };
     }, [load]),
   );
 
@@ -697,7 +821,7 @@ const Feed = forwardRef<
         </Text>
 
         <Text style={styles.placeholderBody}>
-          Create your first photo post using the + button.
+          Share a post, photo, video, or study resource using the + button.
         </Text>
       </View>
     );
@@ -732,9 +856,60 @@ const Feed = forwardRef<
         );
 
       case 'friends':
-      case 'sports':
-      case 'clubs':
-        return false;
+        return followingIds.includes(
+          post.authorId,
+        );
+
+      case 'sports': {
+        const author = knownUsers.find(
+          (user) => user.id === post.authorId,
+        );
+
+        return (
+          matchesDiscoveryTerms(
+            post.tags,
+            DISCOVERY_SPORTS,
+          ) ||
+          matchesDiscoveryTerms(
+            author?.interests,
+            DISCOVERY_SPORTS,
+          )
+        );
+      }
+
+      case 'clubs': {
+        const currentClubs = [
+          ...(identity?.clubs ?? []),
+          ...(identity?.societies ?? []),
+        ];
+
+        if (currentClubs.length === 0) {
+          return matchesDiscoveryTerms(
+            post.tags,
+            ['club', 'clubs', 'society', 'societies'],
+          );
+        }
+
+        const author = knownUsers.find(
+          (user) => user.id === post.authorId,
+        );
+
+        const authorClubs = [
+          ...(author?.clubs ?? []),
+          ...(author?.societies ?? []),
+        ];
+
+        return (
+          matchesDiscoveryTerms(
+            post.tags,
+            currentClubs,
+          ) ||
+          matchesDiscoveryTerms(
+            authorClubs,
+            currentClubs,
+          )
+        );
+      }
 
       default:
         return true;
@@ -743,6 +918,107 @@ const Feed = forwardRef<
 
   return (
     <View>
+      {section === 'reels' &&
+      recentlyWatched.length > 0 ? (
+        <View style={styles.recentlyWatchedSection}>
+          <View style={styles.recentlyWatchedHeader}>
+            <View>
+              <Text style={styles.recentlyWatchedTitle}>
+                Recently watched
+              </Text>
+
+              <Text style={styles.recentlyWatchedSubtitle}>
+                Pick up where you left off
+              </Text>
+            </View>
+
+            <Ionicons
+              name="time-outline"
+              size={20}
+              color={colors.accent}
+            />
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={
+              styles.recentlyWatchedList
+            }
+          >
+            {recentlyWatched.map((post) => (
+              <Pressable
+                key={post.id}
+                style={styles.recentlyWatchedCard}
+                onPress={() =>
+                  router.push({
+                    pathname: '/video/[id]',
+                    params: {
+                      id: post.id,
+                    },
+                  })
+                }
+                accessibilityRole="button"
+                accessibilityLabel={`Open recently watched video by ${post.authorName}`}
+              >
+                <View
+                  style={
+                    styles.recentlyWatchedPreview
+                  }
+                >
+                  <Ionicons
+                    name="play"
+                    size={28}
+                    color={colors.text}
+                  />
+
+                  <View
+                    style={
+                      styles.recentlyWatchedPlayCircle
+                    }
+                  >
+                    <Ionicons
+                      name="play"
+                      size={16}
+                      color={colors.text}
+                    />
+                  </View>
+                </View>
+
+                <Text
+                  style={
+                    styles.recentlyWatchedAuthor
+                  }
+                  numberOfLines={1}
+                >
+                  {post.authorName}
+                </Text>
+
+                {post.text ? (
+                  <Text
+                    style={
+                      styles.recentlyWatchedCaption
+                    }
+                    numberOfLines={2}
+                  >
+                    {post.text}
+                  </Text>
+                ) : (
+                  <Text
+                    style={
+                      styles.recentlyWatchedCaption
+                    }
+                    numberOfLines={1}
+                  >
+                    Video
+                  </Text>
+                )}
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      ) : null}
+
       {displayedPosts.length === 0 ? (
         <View style={styles.emptyFeed}>
           <Text style={styles.emptyFeedTitle}>
@@ -826,7 +1102,7 @@ const Feed = forwardRef<
           <RefreshControl
             refreshing={refreshing}
             onRefresh={refresh}
-            tintColor={COLORS.green}
+            tintColor={colors.accent}
           />
         }
         style={styles.refreshOverlay}
@@ -839,8 +1115,6 @@ const Feed = forwardRef<
 function FeedVideo({
   uri,
   postId,
-  width,
-  height,
   activeVideoPostId,
   setActiveVideoPostId,
   onVisibilityChange,
@@ -849,8 +1123,6 @@ function FeedVideo({
 }: {
   uri: string;
   postId: string;
-  width?: number;
-  height?: number;
   activeVideoPostId: string | null;
   setActiveVideoPostId: (
     postId: string | null,
@@ -866,24 +1138,43 @@ function FeedVideo({
   ) => void;
   onDoubleTapLike: () => void;
 }) {
-  const { width: screenWidth } =
-    useWindowDimensions();
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
 
-  const videoFrameHeight = Math.round(
-    (screenWidth * 4) / 5,
+  const videoRef = useRef<View>(null);
+  const lastTapRef = useRef<number | null>(null);
+
+  const player = useVideoPlayer(
+    uri,
+    (videoPlayer) => {
+      videoPlayer.loop = false;
+    },
   );
 
-  const videoRef =
-    useRef<View>(null);
-
-  const lastTapRef =
-    useRef<number | null>(null);
-
-  const doubleTapTimerRef =
-    useRef<ReturnType<typeof setTimeout> | null>(null);
+  function videoLog(
+    event: string,
+    details?: Record<string, unknown>,
+  ) {
+    console.log(
+      `[HI-LINK VIDEO] ${event}`,
+      details ?? '',
+    );
+  }
 
   const isActive =
     activeVideoPostId === postId;
+
+  const [playing, setPlaying] =
+    useState(false);
+
+  const [currentTime, setCurrentTime] =
+    useState(0);
+
+  const [duration, setDuration] =
+    useState(0);
+
+  const progressWidthRef =
+    useRef(0);
 
   const reportVisibility = useCallback(() => {
     videoRef.current?.measureInWindow(
@@ -934,10 +1225,6 @@ function FeedVideo({
     return () => {
       clearTimeout(timer);
 
-      if (doubleTapTimerRef.current) {
-        clearTimeout(doubleTapTimerRef.current);
-      }
-
       registerVideoView(postId, null);
     };
   }, [
@@ -946,182 +1233,231 @@ function FeedVideo({
     reportVisibility,
   ]);
 
-  function handleVideoContainerPress() {
-    const now = Date.now();
-    const lastTap = lastTapRef.current;
-
-    if (
-      lastTap !== null &&
-      now - lastTap < 320
-    ) {
-      lastTapRef.current = null;
-
-      if (doubleTapTimerRef.current) {
-        clearTimeout(doubleTapTimerRef.current);
-        doubleTapTimerRef.current = null;
-      }
-
-      onDoubleTapLike();
+  useEffect(() => {
+    if (!isActive) {
+      player.pause();
+      setPlaying(false);
       return;
     }
 
-    lastTapRef.current = now;
-
-    doubleTapTimerRef.current = setTimeout(() => {
-      lastTapRef.current = null;
-      doubleTapTimerRef.current = null;
-    }, 320);
-  }
-
-  return (
-    <Pressable
-      onPress={handleVideoContainerPress}
-      style={styles.feedVideo}
-    >
-      <View
-        ref={videoRef}
-        style={styles.feedVideo}
-      >
-      {isActive ? (
-        <ActiveFeedVideo
-          uri={uri}
-          postId={postId}
-          setActiveVideoPostId={
-            setActiveVideoPostId
-          }
-          onDoubleTapLike={
-            onDoubleTapLike
-          }
-        />
-      ) : (
-        <Pressable
-          style={styles.feedVideoPlayer}
-          onPress={() =>
-            setActiveVideoPostId(postId)
-          }
-          accessibilityRole="button"
-          accessibilityLabel="Play video"
-        >
-          <View
-            style={{
-              flex: 1,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: '#000',
-            }}
-          >
-            <View
-              style={styles.videoPlayButton}
-            >
-              <Ionicons
-                name="play"
-                size={30}
-                color={COLORS.white}
-              />
-            </View>
-          </View>
-        </Pressable>
-      )}
-      </View>
-    </Pressable>
-  );
-}
-
-function ActiveFeedVideo({
-  uri,
-  postId,
-  setActiveVideoPostId,
-  onDoubleTapLike,
-}: {
-  uri: string;
-  postId: string;
-  setActiveVideoPostId: (
-    postId: string | null,
-  ) => void;
-  onDoubleTapLike: () => void;
-}) {
-  const player = useVideoPlayer(
-    uri,
-    (videoPlayer) => {
-      videoPlayer.loop = false;
-      videoPlayer.play();
-    },
-  );
-
-  const [playing, setPlaying] =
-    useState(true);
-
-  const lastTapRef =
-    useRef<number | null>(null);
-
-  const singleTapTimerRef =
-    useRef<ReturnType<typeof setTimeout> | null>(
-      null,
-    );
-
-  useEffect(() => {
-    return () => {
-      if (singleTapTimerRef.current) {
-        clearTimeout(
-          singleTapTimerRef.current,
-        );
-      }
-    };
-  }, []);
-
-  function togglePlayback() {
-    if (playing) {
-      player.pause();
-      setPlaying(false);
-      setActiveVideoPostId(null);
-      return;
+    if (
+      Number.isFinite(player.duration) &&
+      player.duration > 0
+    ) {
+      setDuration(player.duration);
     }
 
     player.play();
     setPlaying(true);
-  }
+    void recordVideoWatch(postId);
+  }, [
+    isActive,
+    player,
+    postId,
+  ]);
 
-  function handleVideoTap() {
-    const now = Date.now();
-    const lastTap = lastTapRef.current;
+  useEffect(() => {
+    const timeSubscription =
+      player.addListener(
+        'timeUpdate',
+        (event) => {
+          setCurrentTime(
+            event.currentTime,
+          );
 
-    if (
-      lastTap !== null &&
-      now - lastTap < 280
-    ) {
-      lastTapRef.current = null;
+          if (
+            Number.isFinite(player.duration) &&
+            player.duration > 0
+          ) {
+            setDuration(
+              player.duration,
+            );
+          }
+        },
+      );
 
-      if (singleTapTimerRef.current) {
-        clearTimeout(
-          singleTapTimerRef.current,
-        );
-        singleTapTimerRef.current = null;
-      }
+    const statusSubscription =
+      player.addListener(
+        'statusChange',
+        () => {
+          if (
+            Number.isFinite(player.duration) &&
+            player.duration > 0
+          ) {
+            setDuration(
+              player.duration,
+            );
+          }
+        },
+      );
 
-      onDoubleTapLike();
+    return () => {
+      timeSubscription.remove();
+      statusSubscription.remove();
+    };
+  }, [player]);
+
+  useEffect(() => {
+    const subscription =
+      player.addListener(
+        'playingChange',
+        (event) => {
+          setPlaying(event.isPlaying);
+        },
+      );
+
+    return () => {
+      subscription.remove();
+    };
+  }, [player]);
+
+  function togglePlayback() {
+    if (!isActive) {
+      setActiveVideoPostId(postId);
+      player.play();
+      setPlaying(true);
+      void recordVideoWatch(postId);
       return;
     }
 
-    lastTapRef.current = now;
+    if (playing) {
+      const pausedAt = Number.isFinite(player.currentTime)
+        ? player.currentTime
+        : currentTime;
 
-    singleTapTimerRef.current =
-      setTimeout(() => {
-        lastTapRef.current = null;
-        singleTapTimerRef.current = null;
-        togglePlayback();
-      }, 280);
+      videoLog('PAUSE_REQUEST', {
+        postId,
+        currentTime: pausedAt,
+        duration,
+      });
+
+      player.pause();
+      setCurrentTime(pausedAt);
+      setPlaying(false);
+
+      // Keep the video active while paused so the next tap resumes
+      // from the current position.
+      setActiveVideoPostId(postId);
+      return;
+    }
+
+    videoLog('PLAY_REQUEST', {
+      postId,
+      currentTime: player.currentTime,
+      duration,
+    });
+
+    player.play();
+    setPlaying(true);
+    setActiveVideoPostId(postId);
+    void recordVideoWatch(postId);
   }
 
+  function handleVideoPress() {
+    const now = Date.now();
+    const previousTap = lastTapRef.current;
+
+    videoLog('TAP', {
+      postId,
+      playing,
+      isActive,
+      currentTime: player.currentTime,
+    });
+
+    if (
+      previousTap !== null &&
+      now - previousTap < 280
+    ) {
+      lastTapRef.current = null;
+
+      videoLog('DOUBLE_TAP', {
+        postId,
+        elapsed: now - previousTap,
+      });
+
+      onDoubleTapLike();
+    } else {
+      lastTapRef.current = now;
+    }
+
+    togglePlayback();
+  }
+
+  function seekFromPress(
+    event: any,
+  ) {
+    if (!duration || duration <= 0) {
+      return;
+    }
+
+    const width =
+      progressWidthRef.current;
+
+    const locationX =
+      event.nativeEvent.locationX;
+
+    if (!width || width <= 0) {
+      return;
+    }
+
+    const ratio = Math.max(
+      0,
+      Math.min(1, locationX / width),
+    );
+
+    const nextTime = duration * ratio;
+
+    videoLog('SEEK', {
+      postId,
+      from: player.currentTime,
+      to: nextTime,
+      duration,
+    });
+
+    player.currentTime = nextTime;
+
+    setCurrentTime(nextTime);
+  }
+
+  function formatTime(
+    seconds: number,
+  ) {
+    if (
+      !Number.isFinite(seconds) ||
+      seconds < 0
+    ) {
+      return '0:00';
+    }
+
+    const totalSeconds =
+      Math.floor(seconds);
+
+    const minutes =
+      Math.floor(totalSeconds / 60);
+
+    const remaining =
+      totalSeconds % 60;
+
+    return `${minutes}:${String(
+      remaining,
+    ).padStart(2, '0')}`;
+  }
+
+  const progress =
+    duration > 0
+      ? Math.max(
+          0,
+          Math.min(
+            1,
+            currentTime / duration,
+          ),
+        )
+      : 0;
+
   return (
-    <Pressable
-      style={styles.feedVideoPlayer}
-      onPress={handleVideoTap}
-      accessibilityRole="button"
-      accessibilityLabel={
-        playing
-          ? 'Pause video or double tap to like'
-          : 'Play video or double tap to like'
-      }
+    <View
+      ref={videoRef}
+      style={styles.feedVideo}
     >
       <VideoView
         player={player}
@@ -1130,30 +1466,99 @@ function ActiveFeedVideo({
         contentFit="contain"
       />
 
-      {!playing ? (
-        <View style={styles.videoPlayOverlay}>
-          <View style={styles.videoPlayButton}>
+      <Pressable
+        onPress={handleVideoPress}
+        style={styles.videoTouchSurface}
+        accessibilityRole="button"
+        accessibilityLabel={
+          isActive && playing
+            ? 'Pause video or double tap to like'
+            : 'Play video or double tap to like'
+        }
+      />
+
+      {!isActive || !playing ? (
+        <View
+          style={styles.videoPlayOverlay}
+          pointerEvents="none"
+        >
+          <View
+            style={styles.videoPlayButton}
+          >
             <Ionicons
               name="play"
               size={30}
-              color={COLORS.white}
+              color={colors.text}
             />
           </View>
         </View>
-      ) : (
-        <View style={styles.videoPlayingBadge}>
+      ) : null}
+
+      {!playing && duration > 0 ? (
+        <View
+          style={styles.videoTimeOverlay}
+          pointerEvents="none"
+        >
+          <Text
+            style={styles.videoTimeText}
+          >
+            {formatTime(currentTime)} /{' '}
+            {formatTime(duration)}
+          </Text>
+        </View>
+      ) : null}
+
+      {!playing && duration > 0 ? (
+        <View
+          style={styles.videoProgressTrack}
+        >
+          <Pressable
+            style={styles.videoProgressTouchArea}
+            onLayout={(event) => {
+              progressWidthRef.current =
+                event.nativeEvent.layout.width;
+            }}
+            onPress={(event) =>
+              seekFromPress(event)
+            }
+            accessibilityRole="adjustable"
+            accessibilityLabel="Video progress"
+          >
+            <View
+              style={styles.videoProgressBackground}
+            >
+              <View
+                style={[
+                  styles.videoProgressFill,
+                  {
+                    width: `${progress * 100}%`,
+                  },
+                ]}
+              />
+            </View>
+          </Pressable>
+        </View>
+      ) : null}
+
+      {isActive && playing ? (
+        <View
+          style={styles.videoPlayingBadge}
+          pointerEvents="none"
+        >
           <Ionicons
             name="volume-high"
             size={15}
-            color={COLORS.white}
+            color={colors.text}
           />
 
-          <Text style={styles.videoPlayingText}>
+          <Text
+            style={styles.videoPlayingText}
+          >
             Playing
           </Text>
         </View>
-      )}
-    </Pressable>
+      ) : null}
+    </View>
   );
 }
 
@@ -1181,13 +1586,14 @@ function FeedPost({
     view: View | null,
   ) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   const [commentCount, setCommentCount] =
     useState(post.comments);
 
   const [likeCount, setLikeCount] =
     useState(post.likes);
-
-  const [liked, setLiked] = useState(false);
 
   const [reaction, setReaction] =
     useState<PostReaction | null>(null);
@@ -1197,8 +1603,28 @@ function FeedPost({
 
   const [saved, setSaved] = useState(false);
 
+  const [reshared, setReshared] =
+    useState(false);
+
+  const [resharing, setResharing] =
+    useState(false);
+
+  const reshareInFlightRef =
+    useRef(false);
+
   const [lastTap, setLastTap] =
     useState<number | null>(null);
+
+  const heartScale = useRef(
+    new Animated.Value(0.5),
+  ).current;
+
+  const heartOpacity = useRef(
+    new Animated.Value(0),
+  ).current;
+
+  const heartAnimationRunningRef =
+    useRef(false);
 
   useEffect(() => {
     loadSavedState();
@@ -1210,15 +1636,34 @@ function FeedPost({
   }
 
   useEffect(() => {
-    loadLikedState();
+    loadReshareState();
   }, [post.id]);
 
-  async function loadLikedState() {
+  async function loadReshareState() {
+    const currentIdentity = await getIdentity();
+
+    if (!currentIdentity) {
+      setReshared(false);
+      return;
+    }
+
+    const result = await isPostReshared(
+      post.id,
+      currentIdentity.id,
+    );
+
+    setReshared(result);
+  }
+
+  useEffect(() => {
+    loadReactionState();
+  }, [post.id]);
+
+  async function loadReactionState() {
     const storedReaction =
       await getPostReaction(post.id);
 
     setReaction(storedReaction);
-    setLiked(storedReaction === 'like');
   }
 
   async function selectReaction(
@@ -1231,7 +1676,6 @@ function FeedPost({
         await removePostReaction(post.id);
 
         setReaction(null);
-        setLiked(false);
 
         const nextCount = Math.max(
           0,
@@ -1257,7 +1701,6 @@ function FeedPost({
       );
 
       setReaction(nextReaction);
-      setLiked(nextReaction === 'like');
 
       const nextCount =
         currentReaction === null
@@ -1293,6 +1736,40 @@ function FeedPost({
     }
   }
 
+  async function likeFromDoubleTap() {
+    try {
+      if (reaction === 'like') {
+        return;
+      }
+
+      await setPostReaction(
+        post.id,
+        'like',
+      );
+
+      setReaction('like');
+
+      if (reaction === null) {
+        const nextCount = likeCount + 1;
+
+        setLikeCount(nextCount);
+
+        await updatePost({
+          ...post,
+          likes: nextCount,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+
+      await onChanged();
+    } catch (error) {
+      console.error(
+        'Double-tap like failed:',
+        error,
+      );
+    }
+  }
+
   async function toggleSave() {
     try {
       const result =
@@ -1307,6 +1784,61 @@ function FeedPost({
     }
   }
 
+  function openFullscreenVideo() {
+    if (
+      post.type !== 'video' ||
+      !post.attachment?.uri
+    ) {
+      return;
+    }
+
+    router.push({
+      pathname: '/video/[id]',
+      params: { id: post.id },
+    });
+  }
+
+  function triggerLikeAnimation() {
+    if (heartAnimationRunningRef.current) {
+      return;
+    }
+
+    heartAnimationRunningRef.current = true;
+
+    heartScale.setValue(0.45);
+    heartOpacity.setValue(0);
+
+    Animated.parallel([
+      Animated.sequence([
+        Animated.timing(heartScale, {
+          toValue: 1.15,
+          duration: 180,
+          useNativeDriver: true,
+        }),
+        Animated.timing(heartScale, {
+          toValue: 1,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.sequence([
+        Animated.timing(heartOpacity, {
+          toValue: 1,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.delay(350),
+        Animated.timing(heartOpacity, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start(() => {
+      heartAnimationRunningRef.current = false;
+    });
+  }
+
   function handlePostTap() {
     const now = Date.now();
 
@@ -1315,6 +1847,7 @@ function FeedPost({
       now - lastTap < 300
     ) {
       setLastTap(null);
+      triggerLikeAnimation();
       void toggleLike();
       return;
     }
@@ -1355,6 +1888,99 @@ function FeedPost({
       await onChanged();
     } catch (error) {
       console.error('Share failed:', error);
+    }
+  }
+
+  async function resharePost() {
+    if (
+      reshareInFlightRef.current ||
+      resharing ||
+      reshared
+    ) {
+      return;
+    }
+
+    reshareInFlightRef.current = true;
+    setResharing(true);
+
+    try {
+      const currentIdentity = await getIdentity();
+
+      if (!currentIdentity) {
+        Alert.alert(
+          'Identity required',
+          'Set up your Hi-Link identity before resharing a dispatch.',
+        );
+        return;
+      }
+
+      const alreadyReshared = await isPostReshared(
+        post.id,
+        currentIdentity.id,
+      );
+
+      if (alreadyReshared) {
+        setReshared(true);
+        return;
+      }
+
+      const now = new Date().toISOString();
+
+      const resharedPost: Post = {
+        ...post,
+        id: `reshare-${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2, 8)}`,
+        authorId: currentIdentity.id,
+        authorName: currentIdentity.name,
+        authorUsername: currentIdentity.username,
+        authorAvatarUri: currentIdentity.avatarUri,
+        likes: 0,
+        comments: 0,
+        shares: 0,
+        reshares: 0,
+        saves: 0,
+        resharedFromId: post.id,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      await addPost(resharedPost);
+
+      const updatedOriginal: Post = {
+        ...post,
+        reshares: (post.reshares ?? 0) + 1,
+        updatedAt: now,
+      };
+
+      await updatePost(updatedOriginal);
+
+      await addReshare({
+        id: `reshare-record-${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2, 8)}`,
+        postId: post.id,
+        userId: currentIdentity.id,
+        resharedPostId: resharedPost.id,
+        createdAt: now,
+      });
+
+      setReshared(true);
+
+      await onChanged();
+    } catch (error) {
+      console.error(
+        'Reshare failed:',
+        error,
+      );
+
+      Alert.alert(
+        'Reshare failed',
+        'The dispatch could not be reshared. Please try again.',
+      );
+    } finally {
+      reshareInFlightRef.current = false;
+      setResharing(false);
     }
   }
 
@@ -1920,7 +2546,7 @@ function FeedPost({
               <Ionicons
                 name="person"
                 size={19}
-                color={COLORS.green}
+                color={colors.accent}
               />
             </View>
           )}
@@ -1949,7 +2575,7 @@ function FeedPost({
           <Ionicons
             name="ellipsis-horizontal"
             size={22}
-            color={COLORS.softWhite}
+            color={colors.textSecondary}
           />
         </Pressable>
       </View>
@@ -1963,11 +2589,39 @@ function FeedPost({
 
         {post.type === 'photo' &&
         post.attachment?.uri ? (
-          <Image
-            source={{ uri: post.attachment.uri }}
-            style={styles.feedImage}
-            resizeMode="cover"
-          />
+          <Pressable
+            onPress={handlePostTap}
+            style={styles.feedMediaTouch}
+            accessibilityRole="button"
+            accessibilityLabel="Photo. Double tap to like."
+          >
+            <Image
+              source={{ uri: post.attachment.uri }}
+              style={styles.feedImage}
+              resizeMode="cover"
+            />
+
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.doubleTapHeart,
+                {
+                  opacity: heartOpacity,
+                  transform: [
+                    {
+                      scale: heartScale,
+                    },
+                  ],
+                },
+              ]}
+            >
+              <Ionicons
+                name="heart"
+                size={92}
+                color={colors.text}
+              />
+            </Animated.View>
+          </Pressable>
         ) : null}
 
         {post.type === 'video' &&
@@ -1975,8 +2629,6 @@ function FeedPost({
           <FeedVideo
             uri={post.attachment.uri}
             postId={post.id}
-            width={post.attachment.width}
-            height={post.attachment.height}
             onVisibilityChange={
               onVisibilityChange
             }
@@ -1988,13 +2640,65 @@ function FeedPost({
               setActiveVideoPostId
             }
             onDoubleTapLike={() => {
-              void toggleLike();
+              triggerLikeAnimation();
+              void likeFromDoubleTap();
             }}
           />
         ) : null}
+
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.doubleTapHeart,
+            {
+              opacity: heartOpacity,
+              transform: [
+                {
+                  scale: heartScale,
+                },
+              ],
+            },
+          ]}
+        >
+          <Ionicons
+            name="heart"
+            size={92}
+            color={colors.text}
+          />
+        </Animated.View>
       </View>
 
       <View style={styles.feedActions}>
+        <Pressable
+          onPress={toggleLike}
+          style={styles.feedAction}
+        >
+          <Ionicons
+            name={
+              reaction === 'like'
+                ? 'heart'
+                : 'heart-outline'
+            }
+            size={21}
+            color={
+              reaction === 'like'
+                ? colors.accent
+                : colors.textSecondary
+            }
+          />
+
+          <Text
+            style={[
+              styles.feedActionText,
+              reaction === 'like' && {
+                color: colors.accent,
+              },
+            ]}
+          >
+            {likeCount}
+          </Text>
+        </Pressable>
+
         <View style={styles.reactionAction}>
           {showReactions ? (
             <View style={styles.reactionPicker}>
@@ -2012,7 +2716,7 @@ function FeedPost({
                 style={styles.reactionButton}
               >
                 <Text style={styles.reactionEmoji}>
-                  ❤️
+                  💕
                 </Text>
               </Pressable>
 
@@ -2055,38 +2759,30 @@ function FeedPost({
           ) : null}
 
           <Pressable
-            onPress={toggleLike}
-            onLongPress={() =>
-              setShowReactions(true)
+            onPress={() =>
+              setShowReactions(
+                (visible) => !visible,
+              )
             }
-            delayLongPress={300}
             style={styles.feedAction}
           >
-            <Ionicons
-              name={
-                reaction === 'love'
-                  ? 'heart'
-                  : liked
-                    ? 'heart'
-                    : 'heart-outline'
-              }
-              size={21}
-              color={
-                liked || reaction
-                  ? COLORS.green
-                  : COLORS.softWhite
-              }
-            />
+            <Text
+              style={styles.reactionActionEmoji}
+            >
+              {reaction
+                ? REACTION_EMOJI[reaction]
+                : '🙂'}
+            </Text>
 
             <Text
               style={[
                 styles.feedActionText,
-                (liked || reaction) && {
-                  color: COLORS.green,
+                reaction && {
+                  color: colors.accent,
                 },
               ]}
             >
-              {likeCount}
+              React
             </Text>
           </Pressable>
         </View>
@@ -2108,7 +2804,7 @@ function FeedPost({
           <Ionicons
             name="chatbubble-outline"
             size={21}
-            color={COLORS.softWhite}
+            color={colors.textSecondary}
           />
 
           <Text style={styles.feedActionText}>
@@ -2117,17 +2813,37 @@ function FeedPost({
         </Pressable>
 
         <Pressable
-          onPress={sharePost}
+          onPress={resharePost}
           style={styles.feedAction}
+          disabled={resharing || reshared}
+          accessibilityRole="button"
+          accessibilityLabel={
+            reshared
+              ? 'Already reshared'
+              : 'Reshare dispatch'
+          }
         >
           <Ionicons
-            name="share-social-outline"
+            name="repeat-outline"
             size={21}
-            color={COLORS.softWhite}
+            color={
+              reshared
+                ? colors.accent
+                : colors.textSecondary
+            }
           />
 
-          <Text style={styles.feedActionText}>
-            {post.shares}
+          <Text
+            style={[
+              styles.feedActionText,
+              reshared && {
+                color: colors.accent,
+              },
+            ]}
+          >
+            {reshared
+              ? 'Reshared'
+              : post.reshares ?? 0}
           </Text>
         </Pressable>
 
@@ -2144,8 +2860,8 @@ function FeedPost({
             size={21}
             color={
               saved
-                ? COLORS.green
-                : COLORS.softWhite
+                ? colors.accent
+                : colors.textSecondary
             }
           />
 
@@ -2153,26 +2869,43 @@ function FeedPost({
             style={[
               styles.feedActionText,
               saved && {
-                color: COLORS.green,
+                color: colors.accent,
               },
             ]}
           >
             {saved ? 'Saved' : 'Save'}
           </Text>
         </Pressable>
+
+        {post.type === 'video' &&
+        post.attachment?.uri ? (
+          <Pressable
+            onPress={openFullscreenVideo}
+            style={styles.feedAction}
+            accessibilityRole="button"
+            accessibilityLabel="Open fullscreen video"
+          >
+            <Ionicons
+              name="expand-outline"
+              size={21}
+              color={colors.textSecondary}
+            />
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
   feedTabs: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 14,
     padding: 4,
     borderRadius: 14,
-    backgroundColor: '#F1F3F5',
+    backgroundColor: colors.cardRaised,
   },
 
   feedTab: {
@@ -2184,17 +2917,17 @@ const styles = StyleSheet.create({
   },
 
   feedTabActive: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
   },
 
   feedTabText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6B7280',
+    color: colors.muted,
   },
 
   feedTabTextActive: {
-    color: '#0B6BFF',
+    color: colors.blue,
   },
 
   emptyFeed: {
@@ -2207,7 +2940,7 @@ const styles = StyleSheet.create({
   emptyFeedTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.text,
     marginBottom: 6,
   },
 
@@ -2215,20 +2948,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     textAlign: 'center',
-    color: '#6B7280',
+    color: colors.muted,
   },
 
   fixedHomeHeader: {
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
     zIndex: 20,
   },
 
   homeNavigation: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: colors.border,
     borderRadius: 12,
     paddingHorizontal: 4,
     marginBottom: 4,
@@ -2244,8 +2977,8 @@ const styles = StyleSheet.create({
   },
 
   homeNavigationItemActive: {
-    backgroundColor: '#F1F3F5',
-    borderBottomColor: COLORS.green,
+    backgroundColor: colors.cardRaised,
+    borderBottomColor: colors.accent,
   },
 
   homeNavigationLabel: {
@@ -2257,11 +2990,11 @@ const styles = StyleSheet.create({
   homeNavigationText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#000000',
+    color: colors.text,
   },
 
   homeNavigationTextActive: {
-    color: '#000000',
+    color: colors.text,
     fontWeight: '800',
   },
 
@@ -2272,13 +3005,13 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#19E68C',
+    backgroundColor: colors.accent,
   },
 
   homeNavigationBadgeText: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#000000',
+    color: colors.background,
   },
 
   feedSection: {
@@ -2286,10 +3019,10 @@ const styles = StyleSheet.create({
   },
 
   feedPost: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: colors.card,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
     marginBottom: 14,
     overflow: 'hidden',
   },
@@ -2324,7 +3057,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: COLORS.greenSoft,
+    backgroundColor: colors.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2335,19 +3068,19 @@ const styles = StyleSheet.create({
   },
 
   feedAuthorName: {
-    color: COLORS.white,
+    color: colors.text,
     fontSize: 15,
     fontWeight: '800',
   },
 
   feedAuthorMeta: {
-    color: COLORS.muted,
+    color: colors.muted,
     fontSize: 11,
     marginTop: 3,
   },
 
   feedText: {
-    color: COLORS.softWhite,
+    color: colors.textSecondary,
     fontSize: 15,
     lineHeight: 22,
     paddingHorizontal: 15,
@@ -2369,6 +3102,7 @@ const styles = StyleSheet.create({
   feedVideoPlayer: {
     width: '100%',
     height: '100%',
+    backgroundColor: '#000000',
   },
 
   videoPlayOverlay: {
@@ -2403,15 +3137,88 @@ const styles = StyleSheet.create({
   },
 
   videoPlayingText: {
-    color: COLORS.white,
+    color: colors.text,
     fontSize: 11,
     fontWeight: '700',
+  },
+
+  videoTouchSurface: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    zIndex: 2,
+  },
+
+  videoTimeOverlay: {
+    position: 'absolute',
+    left: 12,
+    bottom: 34,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.68)',
+  },
+
+  videoTimeText: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+
+  videoProgressTrack: {
+    position: 'absolute',
+    left: 10,
+    right: 10,
+    bottom: 10,
+    height: 22,
+    justifyContent: 'center',
+    zIndex: 3,
+  },
+
+  videoProgressTouchArea: {
+    width: '100%',
+    height: 22,
+    justifyContent: 'center',
+  },
+
+  videoProgressBackground: {
+    width: '100%',
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.35)',
+    overflow: 'hidden',
+  },
+
+  videoProgressFill: {
+    height: '100%',
+    borderRadius: 2,
+    backgroundColor: colors.text,
   },
 
   feedImage: {
     width: '100%',
     aspectRatio: 1,
-    backgroundColor: COLORS.surfaceRaised,
+    backgroundColor: colors.cardRaised,
+  },
+
+  feedMediaTouch: {
+    position: 'relative',
+    width: '100%',
+  },
+
+  doubleTapHeart: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    elevation: 10,
   },
 
   feedActions: {
@@ -2421,7 +3228,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 22,
     borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+    borderTopColor: colors.border,
   },
 
   reactionAction: {
@@ -2435,9 +3242,9 @@ const styles = StyleSheet.create({
     left: -4,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surfaceRaised,
+    backgroundColor: colors.cardRaised,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
     borderRadius: 22,
     paddingHorizontal: 6,
     paddingVertical: 5,
@@ -2456,6 +3263,11 @@ const styles = StyleSheet.create({
     fontSize: 22,
   },
 
+  reactionActionEmoji: {
+    fontSize: 21,
+    lineHeight: 21,
+  },
+
   feedAction: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2464,9 +3276,87 @@ const styles = StyleSheet.create({
   },
 
   feedActionText: {
-    color: COLORS.softWhite,
+    color: colors.textSecondary,
     fontSize: 12,
     fontWeight: '700',
+  },
+
+  recentlyWatchedSection: {
+    marginBottom: 14,
+    paddingTop: 4,
+  },
+
+  recentlyWatchedHeader: {
+    paddingHorizontal: 14,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+
+  recentlyWatchedTitle: {
+    color: colors.text,
+    fontSize: 17,
+    fontWeight: '800',
+  },
+
+  recentlyWatchedSubtitle: {
+    marginTop: 2,
+    color: colors.textSecondary,
+    fontSize: 12,
+  },
+
+  recentlyWatchedList: {
+    paddingHorizontal: 14,
+    gap: 10,
+  },
+
+  recentlyWatchedCard: {
+    width: 132,
+    borderRadius: 14,
+    overflow: 'hidden',
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingBottom: 9,
+  },
+
+  recentlyWatchedPreview: {
+    width: '100%',
+    aspectRatio: 9 / 13,
+    backgroundColor: '#000000',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+
+  recentlyWatchedPlayCircle: {
+    position: 'absolute',
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.58)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.24)',
+    paddingLeft: 2,
+  },
+
+  recentlyWatchedAuthor: {
+    marginTop: 8,
+    paddingHorizontal: 9,
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+
+  recentlyWatchedCaption: {
+    marginTop: 3,
+    paddingHorizontal: 9,
+    color: colors.textSecondary,
+    fontSize: 11,
+    lineHeight: 15,
   },
 
   feedBottomSpace: {
@@ -2480,7 +3370,7 @@ const styles = StyleSheet.create({
 
   safe: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
   },
 
   content: {
@@ -2503,7 +3393,7 @@ const styles = StyleSheet.create({
   },
 
   logo: {
-    color: COLORS.white,
+    color: colors.text,
     fontSize: 25,
     fontWeight: '900',
     letterSpacing: 2.2,
@@ -2513,13 +3403,13 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: COLORS.green,
+    backgroundColor: colors.accent,
     marginLeft: 7,
     marginTop: 11,
   },
 
   subtitle: {
-    color: COLORS.muted,
+    color: colors.muted,
     fontSize: 12,
     marginTop: 4,
   },
@@ -2528,9 +3418,9 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 15,
-    backgroundColor: COLORS.surface,
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2539,7 +3429,7 @@ const styles = StyleSheet.create({
     width: 9,
     height: 9,
     borderRadius: 5,
-    backgroundColor: COLORS.green,
+    backgroundColor: colors.accent,
   },
 
   greeting: {
@@ -2548,14 +3438,14 @@ const styles = StyleSheet.create({
   },
 
   greetingTitle: {
-    color: COLORS.white,
+    color: colors.text,
     fontSize: 25,
     fontWeight: '800',
     letterSpacing: -0.5,
   },
 
   greetingSubtitle: {
-    color: COLORS.muted,
+    color: colors.muted,
     marginTop: 6,
     fontSize: 14,
   },
@@ -2572,31 +3462,31 @@ const styles = StyleSheet.create({
 
   storyCircle: {
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   storyCircleActive: {
     borderWidth: 2,
-    borderColor: COLORS.green,
-    backgroundColor: COLORS.greenSoft,
+    borderColor: colors.accent,
+    backgroundColor: colors.accentSoft,
   },
 
   storyCircleBlue: {
-    borderColor: COLORS.blue,
-    backgroundColor: COLORS.blueSoft,
+    borderColor: colors.blue,
+    backgroundColor: colors.blueSoft,
   },
 
   storyInitial: {
-    color: COLORS.white,
+    color: colors.text,
     fontSize: 17,
     fontWeight: '800',
   },
 
   storyLabelActive: {
-    color: '#000000',
+    color: colors.text,
     fontWeight: '800',
   },
 
@@ -2607,13 +3497,13 @@ const styles = StyleSheet.create({
     width: 13,
     height: 13,
     borderRadius: 7,
-    backgroundColor: COLORS.green,
+    backgroundColor: colors.accent,
     borderWidth: 2,
-    borderColor: '#FFFFFF',
+    borderColor: colors.card,
   },
 
   storyLabel: {
-    color: COLORS.muted,
+    color: colors.muted,
     fontSize: 11,
     marginTop: 7,
   },
@@ -2621,11 +3511,11 @@ const styles = StyleSheet.create({
   card: {
     position: 'relative',
     overflow: 'hidden',
-    backgroundColor: COLORS.surface,
+    backgroundColor: colors.card,
     borderRadius: 22,
     padding: 21,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
   },
 
   cardAccent: {
@@ -2634,18 +3524,18 @@ const styles = StyleSheet.create({
     left: 0,
     width: 4,
     height: '100%',
-    backgroundColor: COLORS.green,
+    backgroundColor: colors.accent,
   },
 
   cardEyebrow: {
-    color: COLORS.green,
+    color: colors.accent,
     fontSize: 10,
     fontWeight: '900',
     letterSpacing: 1.4,
   },
 
   cardTitle: {
-    color: COLORS.white,
+    color: colors.text,
     fontSize: 22,
     lineHeight: 28,
     fontWeight: '800',
@@ -2653,7 +3543,7 @@ const styles = StyleSheet.create({
   },
 
   cardBody: {
-    color: COLORS.softWhite,
+    color: colors.textSecondary,
     fontSize: 14,
     lineHeight: 21,
     marginTop: 10,
@@ -2669,7 +3559,7 @@ const styles = StyleSheet.create({
   cardPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.greenSoft,
+    backgroundColor: colors.accentSoft,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 7,
@@ -2678,14 +3568,14 @@ const styles = StyleSheet.create({
   cardPillBlue: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.blueSoft,
+    backgroundColor: colors.blueSoft,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 7,
   },
 
   cardPillText: {
-    color: COLORS.softWhite,
+    color: colors.textSecondary,
     fontSize: 11,
     fontWeight: '700',
   },
@@ -2694,7 +3584,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: COLORS.green,
+    backgroundColor: colors.accent,
     marginRight: 6,
   },
 
@@ -2702,7 +3592,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: COLORS.blue,
+    backgroundColor: colors.blue,
     marginRight: 6,
   },
 
@@ -2715,53 +3605,54 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    color: COLORS.white,
+    color: colors.text,
     fontSize: 20,
     fontWeight: '800',
   },
 
   seeAll: {
-    color: COLORS.green,
+    color: colors.accent,
     fontSize: 13,
     fontWeight: '700',
   },
 
   placeholder: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: colors.card,
     borderRadius: 22,
     paddingHorizontal: 24,
     paddingVertical: 30,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
   },
 
   placeholderIconWrap: {
     width: 54,
     height: 54,
     borderRadius: 18,
-    backgroundColor: COLORS.greenSoft,
+    backgroundColor: colors.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   placeholderIcon: {
-    color: COLORS.green,
+    color: colors.accent,
     fontSize: 26,
   },
 
   placeholderTitle: {
-    color: COLORS.white,
+    color: colors.text,
     fontSize: 17,
     fontWeight: '800',
     marginTop: 12,
   },
 
   placeholderBody: {
-    color: COLORS.muted,
+    color: colors.muted,
     textAlign: 'center',
     fontSize: 13,
     lineHeight: 19,
     marginTop: 7,
   },
-});
+  });
+}

@@ -16,7 +16,10 @@ import { router, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 
-import { colors } from '../src/theme/colors';
+import {
+  ThemeColors,
+  useTheme,
+} from '../src/theme/ThemeProvider';
 import { getIdentity } from '../src/storage/identity';
 import {
   addPost,
@@ -69,6 +72,9 @@ const RESOURCE_TYPES = [
 ];
 
 export default function CreatePhotoScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   const params = useLocalSearchParams<{
     editId?: string;
   }>();
@@ -406,6 +412,7 @@ export default function CreatePhotoScreen() {
         likes: 0,
         comments: 0,
         shares: 0,
+        reshares: 0,
         saves: 0,
 
         createdAt: now,
@@ -441,7 +448,7 @@ export default function CreatePhotoScreen() {
       <View style={styles.loading}>
         <ActivityIndicator
           size="large"
-          color={colors.exileGreen}
+          color={colors.accent}
         />
       </View>
     );
@@ -471,7 +478,7 @@ export default function CreatePhotoScreen() {
           <Ionicons
             name="arrow-back"
             size={24}
-            color={colors.white}
+            color={colors.text}
           />
         </Pressable>
 
@@ -495,7 +502,7 @@ export default function CreatePhotoScreen() {
           {posting ? (
             <ActivityIndicator
               size="small"
-              color={colors.black}
+              color={colors.background}
             />
           ) : (
             <Text
@@ -532,7 +539,7 @@ export default function CreatePhotoScreen() {
                 <Ionicons
                   name="images-outline"
                   size={18}
-                  color={colors.white}
+                  color={colors.text}
                 />
 
                 <Text
@@ -552,7 +559,7 @@ export default function CreatePhotoScreen() {
                 <Ionicons
                   name="trash-outline"
                   size={18}
-                  color={colors.white}
+                  color={colors.text}
                 />
 
                 <Text
@@ -579,7 +586,7 @@ export default function CreatePhotoScreen() {
                 name="image-outline"
                 size={38}
                 color={
-                  colors.exileGreen
+                  colors.accent
                 }
               />
             </View>
@@ -750,8 +757,8 @@ export default function CreatePhotoScreen() {
                         size={20}
                         color={
                           selected
-                            ? colors.black
-                            : colors.exileGreen
+                            ? colors.background
+                            : colors.accent
                         }
                       />
                     </View>
@@ -787,7 +794,7 @@ export default function CreatePhotoScreen() {
                       size={22}
                       color={
                         selected
-                          ? colors.exileGreen
+                          ? colors.accent
                           : colors.muted
                       }
                     />
@@ -803,7 +810,7 @@ export default function CreatePhotoScreen() {
                 selectedAudience.icon
               }
               size={17}
-              color={colors.exileBlue}
+              color={colors.blue}
             />
 
             <Text
@@ -862,7 +869,7 @@ export default function CreatePhotoScreen() {
           <Ionicons
             name="shield-checkmark-outline"
             size={21}
-            color={colors.exileGreen}
+            color={colors.accent}
           />
 
           <View style={styles.safetyText}>
@@ -900,6 +907,9 @@ function SettingRow({
   enabled: boolean;
   onPress: () => void;
 }) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   return (
     <Pressable
       onPress={onPress}
@@ -909,7 +919,7 @@ function SettingRow({
         <Ionicons
           name={icon}
           size={19}
-          color={colors.exileGreen}
+          color={colors.accent}
         />
       </View>
 
@@ -948,7 +958,8 @@ function SettingRow({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor:
@@ -982,7 +993,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     flex: 1,
     marginLeft: 8,
-    color: colors.white,
+    color: colors.text,
     fontSize: 20,
     fontWeight: '800',
   },
@@ -993,7 +1004,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 19,
     backgroundColor:
-      colors.exileGreen,
+      colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1003,7 +1014,7 @@ const styles = StyleSheet.create({
   },
 
   postButtonText: {
-    color: colors.black,
+    color: colors.background,
     fontSize: 14,
     fontWeight: '900',
   },
@@ -1017,7 +1028,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     overflow: 'hidden',
     backgroundColor:
-      colors.charcoal,
+      colors.cardRaised,
     marginBottom: 22,
   },
 
@@ -1040,7 +1051,7 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     borderRadius: 12,
     backgroundColor:
-      colors.charcoal2,
+      colors.cardRaised,
     borderWidth: 1,
     borderColor:
       colors.border,
@@ -1052,7 +1063,7 @@ const styles = StyleSheet.create({
   },
 
   changeText: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 13,
     fontWeight: '700',
   },
@@ -1086,7 +1097,7 @@ const styles = StyleSheet.create({
   },
 
   pickerTitle: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 18,
     fontWeight: '800',
   },
@@ -1103,7 +1114,7 @@ const styles = StyleSheet.create({
   },
 
   label: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 15,
     fontWeight: '800',
     marginBottom: 9,
@@ -1116,7 +1127,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor:
       colors.card,
-    color: colors.white,
+    color: colors.text,
     fontSize: 16,
     padding: 14,
   },
@@ -1135,7 +1146,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor:
       colors.card,
-    color: colors.white,
+    color: colors.text,
     fontSize: 15,
     paddingHorizontal: 14,
   },
@@ -1163,19 +1174,19 @@ const styles = StyleSheet.create({
 
   chipSelected: {
     backgroundColor:
-      colors.exileGreen,
+      colors.accent,
     borderColor:
-      colors.exileGreen,
+      colors.accent,
   },
 
   chipText: {
-    color: colors.whiteMuted,
+    color: colors.textSecondary,
     fontSize: 13,
     fontWeight: '700',
   },
 
   chipTextSelected: {
-    color: colors.black,
+    color: colors.background,
   },
 
   audienceList: {
@@ -1206,7 +1217,7 @@ const styles = StyleSheet.create({
     height: 42,
     borderRadius: 13,
     backgroundColor:
-      colors.charcoal2,
+      colors.cardRaised,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 11,
@@ -1214,7 +1225,7 @@ const styles = StyleSheet.create({
 
   audienceIconSelected: {
     backgroundColor:
-      colors.exileGreen,
+      colors.accent,
   },
 
   audienceText: {
@@ -1223,7 +1234,7 @@ const styles = StyleSheet.create({
   },
 
   audienceTitle: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 14,
     fontWeight: '800',
   },
@@ -1274,7 +1285,7 @@ const styles = StyleSheet.create({
   },
 
   settingTitle: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 14,
     fontWeight: '800',
   },
@@ -1290,7 +1301,7 @@ const styles = StyleSheet.create({
     height: 25,
     borderRadius: 13,
     backgroundColor:
-      colors.charcoal2,
+      colors.cardRaised,
     justifyContent: 'center',
     paddingHorizontal: 3,
     borderWidth: 1,
@@ -1300,9 +1311,9 @@ const styles = StyleSheet.create({
 
   switchEnabled: {
     backgroundColor:
-      colors.exileGreenDark,
+      colors.accentDark,
     borderColor:
-      colors.exileGreen,
+      colors.accent,
   },
 
   switchThumb: {
@@ -1316,7 +1327,7 @@ const styles = StyleSheet.create({
   switchThumbEnabled: {
     alignSelf: 'flex-end',
     backgroundColor:
-      colors.white,
+      colors.text,
   },
 
   safetyCard: {
@@ -1336,7 +1347,7 @@ const styles = StyleSheet.create({
   },
 
   safetyTitle: {
-    color: colors.white,
+    color: colors.text,
     fontSize: 13,
     fontWeight: '800',
   },

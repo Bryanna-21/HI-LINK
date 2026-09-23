@@ -11,15 +11,14 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const COLORS = {
-  background: '#070908',
-  border: '#202620',
-  green: '#19E68C',
-  muted: '#77817A',
-};
+import {
+  ThemeColors,
+  useTheme,
+} from '../../src/theme/ThemeProvider';
 
 function CustomTabBar(props: BottomTabBarProps) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const { state, descriptors, navigation } = props;
   const insets = useSafeAreaInsets();
 
@@ -77,14 +76,14 @@ function CustomTabBar(props: BottomTabBarProps) {
         <Ionicons
           name={iconName}
           size={23}
-          color={focused ? COLORS.green : COLORS.muted}
+          color={focused ? colors.accent : colors.muted}
         />
 
         <Text
           style={[
             styles.label,
             {
-              color: focused ? COLORS.green : COLORS.muted,
+              color: focused ? colors.accent : colors.muted,
             },
           ]}
         >
@@ -120,7 +119,7 @@ function CustomTabBar(props: BottomTabBarProps) {
           <View style={styles.createCircle}>
             <Ionicons
               name="add"
-              color={COLORS.background}
+              color={colors.background}
               size={30}
             />
           </View>
@@ -176,11 +175,11 @@ export default function TabsLayout() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   bar: {
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
     borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+    borderTopColor: colors.border,
   },
 
   inner: {
@@ -219,7 +218,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: COLORS.green,
+    backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },

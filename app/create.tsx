@@ -6,63 +6,60 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 
-const C = {
-  overlay: 'rgba(0,0,0,0.68)',
-  sheet: '#101512',
-  sheetRaised: '#151B17',
-  border: '#29312C',
-  white: '#F8FAF8',
-  muted: '#8D9991',
-  green: '#19E68C',
-  blue: '#2F80FF',
-};
+import {
+  ThemeColors,
+  useTheme,
+} from '../src/theme/ThemeProvider';
 
 const actions = [
   {
     title: 'Photo',
     description: 'Share a photo',
     icon: '📷',
-    color: '#123B2A',
+    tone: 'accent' as const,
   },
   {
     title: 'Video',
     description: 'Share a video',
     icon: '🎥',
-    color: '#122747',
+    tone: 'blue' as const,
   },
   {
     title: 'Document',
     description: 'Post a PDF, notes or exam',
     icon: '📄',
-    color: '#123B2A',
+    tone: 'accent' as const,
   },
   {
     title: 'Text',
     description: 'Write a post',
     icon: '✍️',
-    color: '#122747',
+    tone: 'blue' as const,
   },
   {
     title: 'Question',
     description: 'Ask your community',
     icon: '❓',
-    color: '#123B2A',
+    tone: 'accent' as const,
   },
   {
     title: 'Study Resource',
     description: 'Share something useful',
     icon: '📚',
-    color: '#122747',
+    tone: 'blue' as const,
   },
   {
     title: 'Event',
     description: 'Create a school event',
     icon: '📅',
-    color: '#123B2A',
+    tone: 'accent' as const,
   },
 ];
 
 export default function CreateScreen() {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   function close() {
     if (router.canGoBack()) {
       router.back();
@@ -129,7 +126,12 @@ export default function CreateScreen() {
               <View
                 style={[
                   styles.icon,
-                  { backgroundColor: action.color },
+                  {
+                    backgroundColor:
+                      action.tone === 'accent'
+                        ? colors.accentSoft
+                        : colors.blueSoft,
+                  },
                 ]}
               >
                 <Text style={styles.iconText}>
@@ -164,19 +166,20 @@ export default function CreateScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: C.overlay,
+    backgroundColor: 'rgba(0,0,0,0.68)',
   },
 
   sheet: {
-    backgroundColor: C.sheet,
+    backgroundColor: colors.card,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     borderTopWidth: 1,
-    borderColor: C.border,
+    borderColor: colors.border,
     paddingHorizontal: 18,
     paddingTop: 10,
     paddingBottom: 28,
@@ -187,7 +190,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 4,
     borderRadius: 999,
-    backgroundColor: C.muted,
+    backgroundColor: colors.muted,
     marginBottom: 18,
     opacity: 0.7,
   },
@@ -204,13 +207,13 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    color: C.white,
+    color: colors.text,
     fontSize: 24,
     fontWeight: '800',
   },
 
   subtitle: {
-    color: C.muted,
+    color: colors.muted,
     fontSize: 14,
     marginTop: 4,
   },
@@ -219,15 +222,15 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: C.sheetRaised,
+    backgroundColor: colors.cardRaised,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: colors.border,
   },
 
   closeText: {
-    color: C.white,
+    color: colors.text,
     fontSize: 27,
     lineHeight: 29,
     fontWeight: '300',
@@ -240,9 +243,9 @@ const styles = StyleSheet.create({
   action: {
     minHeight: 64,
     borderRadius: 16,
-    backgroundColor: C.sheetRaised,
+    backgroundColor: colors.cardRaised,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: colors.border,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
@@ -271,13 +274,13 @@ const styles = StyleSheet.create({
   },
 
   actionTitle: {
-    color: C.white,
+    color: colors.text,
     fontSize: 15,
     fontWeight: '700',
   },
 
   actionDescription: {
-    color: C.muted,
+    color: colors.muted,
     fontSize: 12,
     marginTop: 3,
   },
@@ -285,7 +288,7 @@ const styles = StyleSheet.create({
   cancel: {
     height: 50,
     borderRadius: 15,
-    backgroundColor: C.border,
+    backgroundColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 14,
@@ -296,7 +299,7 @@ const styles = StyleSheet.create({
   },
 
   cancelText: {
-    color: C.white,
+    color: colors.text,
     fontSize: 15,
     fontWeight: '700',
   },
