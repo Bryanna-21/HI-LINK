@@ -785,6 +785,13 @@ export default function MeScreen() {
                 />
 
                 <ProfileRow
+                  icon="school-outline"
+                  title="Academics"
+                  subtitle="CBC/CBE learning, subjects and study resources"
+                  onPress={() => router.push('/academics')}
+                />
+
+                <ProfileRow
                   icon="download-outline"
                   title="Downloads"
                   subtitle="Files available offline"
