@@ -11,6 +11,7 @@ import {
   Alert,
   Animated,
   Image,
+  Modal,
   Pressable,
   RefreshControl,
   SafeAreaView,
@@ -62,6 +63,11 @@ import {
   isPostReshared,
   addReshare,
 } from '../../src/storage/reshares';
+import {
+  isPostLiked,
+  likePost,
+  unlikePost,
+} from '../../src/storage/likedPosts';
 import { getFollowingIds } from '../../src/storage/follows';
 import { getKnownUsers } from '../../src/storage/users';
 
@@ -733,8 +739,12 @@ const Feed = forwardRef<
     const blockedUserIds =
       await getBlockedUserIds();
 
+    const identity = await getIdentity();
+
     const hiddenPostIds =
-      await getHiddenPostIds();
+      identity
+        ? await getHiddenPostIds(identity.id)
+        : [];
 
     const visiblePosts = result.filter(
       (post) =>
@@ -784,8 +794,12 @@ const Feed = forwardRef<
       const blockedUserIds =
         await getBlockedUserIds();
 
+      const identity = await getIdentity();
+
       const hiddenPostIds =
-        await getHiddenPostIds();
+        identity
+          ? await getHiddenPostIds(identity.id)
+          : [];
 
       const visiblePosts = result.filter(
         (post) =>
@@ -1598,10 +1612,19 @@ function FeedPost({
   const [reaction, setReaction] =
     useState<PostReaction | null>(null);
 
+  const [liked, setLiked] =
+    useState(false);
+
   const [showReactions, setShowReactions] =
     useState(false);
 
   const [saved, setSaved] = useState(false);
+
+  const [postMenuVisible, setPostMenuVisible] =
+    useState(false);
+
+  const [postMenuIsOwn, setPostMenuIsOwn] =
+    useState(false);
 
   const [reshared, setReshared] =
     useState(false);
@@ -1657,6 +1680,7 @@ function FeedPost({
 
   useEffect(() => {
     loadReactionState();
+    loadLikeState();
   }, [post.id]);
 
   async function loadReactionState() {
@@ -1664,6 +1688,23 @@ function FeedPost({
       await getPostReaction(post.id);
 
     setReaction(storedReaction);
+  }
+
+  async function loadLikeState() {
+    const identity = await getIdentity();
+
+    if (!identity) {
+      setLiked(false);
+      return;
+    }
+
+    const likedPost =
+      await isPostLiked(
+        post.id,
+        identity.id,
+      );
+
+    setLiked(likedPost);
   }
 
   async function selectReaction(
@@ -1674,8 +1715,43 @@ function FeedPost({
 
       if (currentReaction === nextReaction) {
         await removePostReaction(post.id);
-
         setReaction(null);
+        setShowReactions(false);
+        await onChanged();
+        return;
+      }
+
+      await setPostReaction(
+        post.id,
+        nextReaction,
+      );
+
+      setReaction(nextReaction);
+      setShowReactions(false);
+      await onChanged();
+    } catch (error) {
+      console.error(
+        'Reaction update failed:',
+        error,
+      );
+    }
+  }
+
+  async function toggleLike() {
+    try {
+      const identity = await getIdentity();
+
+      if (!identity) {
+        return;
+      }
+
+      if (liked) {
+        await unlikePost(
+          post.id,
+          identity.id,
+        );
+
+        setLiked(false);
 
         const nextCount = Math.max(
           0,
@@ -1689,67 +1765,14 @@ function FeedPost({
           likes: nextCount,
           updatedAt: new Date().toISOString(),
         });
+      } else {
+        await likePost(
+          post.id,
+          identity.id,
+        );
 
-        setShowReactions(false);
-        await onChanged();
-        return;
-      }
+        setLiked(true);
 
-      await setPostReaction(
-        post.id,
-        nextReaction,
-      );
-
-      setReaction(nextReaction);
-
-      const nextCount =
-        currentReaction === null
-          ? likeCount + 1
-          : likeCount;
-
-      setLikeCount(nextCount);
-
-      await updatePost({
-        ...post,
-        likes: nextCount,
-        updatedAt: new Date().toISOString(),
-      });
-
-      setShowReactions(false);
-      await onChanged();
-    } catch (error) {
-      console.error(
-        'Reaction update failed:',
-        error,
-      );
-    }
-  }
-
-  async function toggleLike() {
-    try {
-      await selectReaction('like');
-    } catch (error) {
-      console.error(
-        'Like post failed:',
-        error,
-      );
-    }
-  }
-
-  async function likeFromDoubleTap() {
-    try {
-      if (reaction === 'like') {
-        return;
-      }
-
-      await setPostReaction(
-        post.id,
-        'like',
-      );
-
-      setReaction('like');
-
-      if (reaction === null) {
         const nextCount = likeCount + 1;
 
         setLikeCount(nextCount);
@@ -1760,6 +1783,40 @@ function FeedPost({
           updatedAt: new Date().toISOString(),
         });
       }
+
+      await onChanged();
+    } catch (error) {
+      console.error(
+        'Like post failed:',
+        error,
+      );
+    }
+  }
+
+  async function likeFromDoubleTap() {
+    try {
+      const identity = await getIdentity();
+
+      if (!identity || liked) {
+        return;
+      }
+
+      await likePost(
+        post.id,
+        identity.id,
+      );
+
+      setLiked(true);
+
+      const nextCount = likeCount + 1;
+
+      setLikeCount(nextCount);
+
+      await updatePost({
+        ...post,
+        likes: nextCount,
+        updatedAt: new Date().toISOString(),
+      });
 
       await onChanged();
     } catch (error) {
@@ -2044,119 +2101,56 @@ function FeedPost({
 
   function openPostMenu() {
     void getIdentity().then((identity) => {
-      const isOwnPost =
-        identity?.id === post.authorId;
-
-      if (isOwnPost) {
-        Alert.alert(
-          'Post options',
-          undefined,
-          [
-            {
-              text: 'Edit post',
-              onPress: () => {
-                const editor =
-                  post.type === 'video'
-                    ? '/create-video'
-                    : post.type === 'text'
-                      ? '/create-text'
-                      : '/create-photo';
-
-                router.push({
-                  pathname: editor,
-                  params: {
-                    editId: post.id,
-                  },
-                });
-              },
-            },
-            ...(post.attachment?.uri &&
-            post.allowDownload !== false &&
-            (post.type === 'photo' ||
-              post.type === 'video')
-              ? [
-                  {
-                    text: 'Download',
-                    onPress: downloadMedia,
-                  },
-                ]
-              : []),
-            {
-              text: 'Delete post',
-              style: 'destructive',
-              onPress: confirmDeletePost,
-            },
-            {
-              text: 'Cancel',
-              style: 'cancel',
-            },
-          ],
-        );
-
-        return;
-      }
-
-      const mediaActions =
-        post.attachment?.uri &&
-        post.allowDownload !== false &&
-        (post.type === 'photo' ||
-          post.type === 'video')
-          ? [
-              {
-                text: 'Download',
-                onPress: downloadMedia,
-              },
-            ]
-          : [];
-
-      Alert.alert(
-        'Post options',
-        undefined,
-        [
-          ...mediaActions,
-          {
-            text: 'Hide post',
-            onPress: hideThisPost,
-          },
-          {
-            text: 'Block user',
-            style: 'destructive',
-            onPress: confirmBlockUser,
-          },
-          {
-            text: 'Report post',
-            style: 'destructive',
-            onPress: openReportPrompt,
-          },
-          {
-            text: 'Report user',
-            style: 'destructive',
-            onPress: openUserReportPrompt,
-          },
-          {
-            text: 'Cancel',
-            style: 'cancel',
-          },
-        ],
+      setPostMenuIsOwn(
+        identity?.id === post.authorId,
       );
+      setPostMenuVisible(true);
     });
   }
 
-  async function hideThisPost() {
-    try {
-      const { hidePost } =
-        await import(
-          '../../src/storage/hiddenPosts'
-        );
+  function hideThisPost() {
+    Alert.alert(
+      'Hide this post?',
+      'Hidden posts are not visible to other users.',
+      [
+        {
+          text: 'Decline',
+          style: 'cancel',
+        },
+        {
+          text: 'Accept',
+          onPress: () => {
+            void (async () => {
+              try {
+                const { hidePost } =
+                  await import(
+                    '../../src/storage/hiddenPosts'
+                  );
 
-      await hidePost(post.id);
-      await onChanged();
-    } catch (error) {
-      console.error(
-        'Hide post failed:',
-        error,
-      );
-    }
+                const identity =
+                  await getIdentity();
+
+                if (!identity) {
+                  return;
+                }
+
+                await hidePost(
+                  post.id,
+                  identity.id,
+                );
+
+                await onChanged();
+              } catch (error) {
+                console.error(
+                  'Hide post failed:',
+                  error,
+                );
+              }
+            })();
+          },
+        },
+      ],
+    );
   }
 
   function confirmBlockUser() {
@@ -2675,13 +2669,13 @@ function FeedPost({
         >
           <Ionicons
             name={
-              reaction === 'like'
+              liked
                 ? 'heart'
                 : 'heart-outline'
             }
             size={21}
             color={
-              reaction === 'like'
+              liked
                 ? colors.accent
                 : colors.textSecondary
             }
@@ -2690,7 +2684,7 @@ function FeedPost({
           <Text
             style={[
               styles.feedActionText,
-              reaction === 'like' && {
+              liked && {
                 color: colors.accent,
               },
             ]}
@@ -2893,6 +2887,250 @@ function FeedPost({
           </Pressable>
         ) : null}
       </View>
+
+      <Modal
+        visible={postMenuVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() =>
+          setPostMenuVisible(false)
+        }
+      >
+        <View style={styles.postMenuOverlay}>
+          <Pressable
+            style={styles.postMenuBackdrop}
+            onPress={() =>
+              setPostMenuVisible(false)
+            }
+          />
+
+          <View style={styles.postMenuSheet}>
+            <View style={styles.postMenuHeader}>
+              <Text style={styles.postMenuTitle}>
+                Post options
+              </Text>
+
+              <Pressable
+                onPress={() =>
+                  setPostMenuVisible(false)
+                }
+                style={styles.postMenuClose}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Close post options"
+              >
+                <Ionicons
+                  name="close"
+                  size={24}
+                  color={colors.text}
+                />
+              </Pressable>
+            </View>
+
+            {postMenuIsOwn ? (
+              <>
+                <Pressable
+                  style={styles.postMenuItem}
+                  onPress={() => {
+                    setPostMenuVisible(false);
+
+                    const editor =
+                      post.type === 'video'
+                        ? '/create-video'
+                        : post.type === 'text'
+                          ? '/create-text'
+                          : '/create-photo';
+
+                    router.push({
+                      pathname: editor,
+                      params: {
+                        editId: post.id,
+                      },
+                    });
+                  }}
+                >
+                  <Ionicons
+                    name="create-outline"
+                    size={22}
+                    color={colors.text}
+                  />
+                  <Text style={styles.postMenuItemText}>
+                    Edit post
+                  </Text>
+                </Pressable>
+
+                {post.attachment?.uri &&
+                post.allowDownload !== false &&
+                (post.type === 'photo' ||
+                  post.type === 'video') ? (
+                  <Pressable
+                    style={styles.postMenuItem}
+                    onPress={() => {
+                      setPostMenuVisible(false);
+                      void downloadMedia();
+                    }}
+                  >
+                    <Ionicons
+                      name="download-outline"
+                      size={22}
+                      color={colors.text}
+                    />
+                    <Text style={styles.postMenuItemText}>
+                      Download
+                    </Text>
+                  </Pressable>
+                ) : null}
+
+                <Pressable
+                  style={styles.postMenuItem}
+                  onPress={() => {
+                    setPostMenuVisible(false);
+                    void hideThisPost();
+                  }}
+                >
+                  <Ionicons
+                    name="eye-off-outline"
+                    size={22}
+                    color={colors.text}
+                  />
+                  <Text style={styles.postMenuItemText}>
+                    Hide post
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  style={styles.postMenuItem}
+                  onPress={() => {
+                    setPostMenuVisible(false);
+                    confirmDeletePost();
+                  }}
+                >
+                  <Ionicons
+                    name="trash-outline"
+                    size={22}
+                    color="#D93025"
+                  />
+                  <Text
+                    style={[
+                      styles.postMenuItemText,
+                      styles.postMenuDangerText,
+                    ]}
+                  >
+                    Delete post
+                  </Text>
+                </Pressable>
+              </>
+            ) : (
+              <>
+                {post.attachment?.uri &&
+                post.allowDownload !== false &&
+                (post.type === 'photo' ||
+                  post.type === 'video') ? (
+                  <Pressable
+                    style={styles.postMenuItem}
+                    onPress={() => {
+                      setPostMenuVisible(false);
+                      void downloadMedia();
+                    }}
+                  >
+                    <Ionicons
+                      name="download-outline"
+                      size={22}
+                      color={colors.text}
+                    />
+                    <Text style={styles.postMenuItemText}>
+                      Download
+                    </Text>
+                  </Pressable>
+                ) : null}
+
+                <Pressable
+                  style={styles.postMenuItem}
+                  onPress={() => {
+                    setPostMenuVisible(false);
+                    void hideThisPost();
+                  }}
+                >
+                  <Ionicons
+                    name="eye-off-outline"
+                    size={22}
+                    color={colors.text}
+                  />
+                  <Text style={styles.postMenuItemText}>
+                    Hide post
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  style={styles.postMenuItem}
+                  onPress={() => {
+                    setPostMenuVisible(false);
+                    confirmBlockUser();
+                  }}
+                >
+                  <Ionicons
+                    name="ban-outline"
+                    size={22}
+                    color="#D93025"
+                  />
+                  <Text
+                    style={[
+                      styles.postMenuItemText,
+                      styles.postMenuDangerText,
+                    ]}
+                  >
+                    Block user
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  style={styles.postMenuItem}
+                  onPress={() => {
+                    setPostMenuVisible(false);
+                    openReportPrompt();
+                  }}
+                >
+                  <Ionicons
+                    name="flag-outline"
+                    size={22}
+                    color="#D93025"
+                  />
+                  <Text
+                    style={[
+                      styles.postMenuItemText,
+                      styles.postMenuDangerText,
+                    ]}
+                  >
+                    Report post
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  style={styles.postMenuItem}
+                  onPress={() => {
+                    setPostMenuVisible(false);
+                    openUserReportPrompt();
+                  }}
+                >
+                  <Ionicons
+                    name="person-remove-outline"
+                    size={22}
+                    color="#D93025"
+                  />
+                  <Text
+                    style={[
+                      styles.postMenuItemText,
+                      styles.postMenuDangerText,
+                    ]}
+                  >
+                    Report user
+                  </Text>
+                </Pressable>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -3025,6 +3263,69 @@ function createStyles(colors: ThemeColors) {
     borderColor: colors.border,
     marginBottom: 14,
     overflow: 'hidden',
+  },
+
+  postMenuOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+
+  postMenuBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.48)',
+  },
+
+  postMenuSheet: {
+    backgroundColor: colors.card,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: 28,
+    paddingTop: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+
+  postMenuHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+
+  postMenuTitle: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '800',
+  },
+
+  postMenuClose: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.cardRaised,
+  },
+
+  postMenuItem: {
+    minHeight: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    gap: 14,
+  },
+
+  postMenuItemText: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+
+  postMenuDangerText: {
+    color: '#D93025',
   },
 
   feedHeader: {

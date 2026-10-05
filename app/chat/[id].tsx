@@ -595,8 +595,8 @@ export default function ChatScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.screen}
-      behavior="padding"
-      keyboardVerticalOffset={0}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 24}
     >
       <View style={styles.header}>
         <Pressable
@@ -680,6 +680,12 @@ export default function ChatScreen() {
         </Pressable>
 
         <Pressable
+          onPress={() =>
+            router.push({
+              pathname: '/chat-options',
+              params: { conversationId: id },
+            })
+          }
           style={styles.headerButton}
           accessibilityRole="button"
           accessibilityLabel="Chat options"

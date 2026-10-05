@@ -4,6 +4,8 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { ThemeColors, useTheme } from '../src/theme/ThemeProvider';
 import { isOnboardingComplete } from '../src/storage/onboarding';
+import { isSessionActive } from '../src/storage/session';
+import { getUsers } from '../src/storage/users';
 
 export default function Index() {
   const { colors } = useTheme();
@@ -11,6 +13,8 @@ export default function Index() {
 
   const [loading, setLoading] = useState(true);
   const [complete, setComplete] = useState(false);
+  const [sessionActive, setSessionActiveState] = useState(false);
+  const [hasSavedProfiles, setHasSavedProfiles] = useState(false);
 
   useEffect(() => {
     checkOnboarding();
@@ -18,8 +22,12 @@ export default function Index() {
 
   async function checkOnboarding() {
     const result = await isOnboardingComplete();
+    const active = await isSessionActive();
+    const users = await getUsers();
 
     setComplete(result);
+    setSessionActiveState(active);
+    setHasSavedProfiles(users.length > 0);
     setLoading(false);
   }
 
@@ -34,8 +42,12 @@ export default function Index() {
     );
   }
 
-  if (complete) {
+  if (complete && sessionActive) {
     return <Redirect href="/(tabs)/home" />;
+  }
+
+  if (hasSavedProfiles) {
+    return <Redirect href="/profiles" />;
   }
 
   return <Redirect href="/onboarding" />;

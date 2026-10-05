@@ -15,7 +15,9 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { ThemeColors, useTheme } from '../src/theme/ThemeProvider';
 import { saveIdentity } from '../src/storage/identity';
+import { upsertUser } from '../src/storage/users';
 import { setOnboardingComplete } from '../src/storage/onboarding';
+import { setSessionActive } from '../src/storage/session';
 import { HiLinkUser } from '../src/models/user';
 
 type IdentificationMethod =
@@ -179,7 +181,9 @@ export default function OnboardingScreen() {
     };
 
     await saveIdentity(user);
+    await upsertUser(user);
     await setOnboardingComplete(true);
+    await setSessionActive(true);
 
     router.replace('/(tabs)/home');
   }

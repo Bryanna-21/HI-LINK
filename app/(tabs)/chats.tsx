@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  FlatList,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -57,6 +59,27 @@ export default function ChatsScreen() {
     async () => {
       const result =
         await getConversations();
+
+      console.log(
+        '[HI-LINK CHATS] loaded conversations:',
+        result.length,
+        result.map((conversation) => ({
+          id: conversation.id,
+          title: conversation.title,
+          type: conversation.type,
+          category: conversation.category,
+          updatedAt: conversation.updatedAt,
+          participantCount: conversation.participants.length,
+          participants: conversation.participants.map((participant) => ({
+            id: participant.id,
+            name: participant.name,
+            username: participant.username,
+            avatarUri: participant.avatarUri,
+          })),
+          conversationAvatar: conversation.avatarUri,
+          lastMessage: conversation.lastMessage?.text,
+        })),
+      );
 
       setConversations(result);
     },
@@ -147,18 +170,26 @@ export default function ChatsScreen() {
   function renderConversation(
     conversation: Conversation,
   ) {
+    const otherParticipant =
+      conversation.participants[1] ??
+      conversation.participants[0] ??
+      null;
+
     const title =
       conversation.title ||
-      conversation.participants[0]?.name ||
+      otherParticipant?.name ||
       'Conversation';
 
     const preview =
       conversation.lastMessage?.text ||
       'No messages yet';
 
+    const avatarUri =
+      conversation.avatarUri ??
+      otherParticipant?.avatarUri;
+
     return (
       <Pressable
-        key={conversation.id}
         style={styles.conversation}
         onPress={() =>
           router.push({
@@ -168,9 +199,18 @@ export default function ChatsScreen() {
         }
       >
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {title.charAt(0).toUpperCase()}
-          </Text>
+          {avatarUri ? (
+            <Image
+              source={{
+                uri: avatarUri,
+              }}
+              style={styles.avatarImage}
+            />
+          ) : (
+            <Text style={styles.avatarText}>
+              {title.charAt(0).toUpperCase()}
+            </Text>
+          )}
         </View>
 
         <View style={styles.conversationBody}>
@@ -228,7 +268,15 @@ export default function ChatsScreen() {
       : 'Conversations matching this section will appear here.';
 
   return (
-    <View style={styles.screen}>
+    <View
+      style={styles.screen}
+      onLayout={(event) => {
+        console.log(
+          '[HI-LINK CHATS] SCREEN:',
+          event.nativeEvent.layout,
+        );
+      }}
+    >
       <View style={styles.header}>
         <View>
           <Text style={styles.title}>Chats</Text>
@@ -273,19 +321,27 @@ export default function ChatsScreen() {
         })}
       </ScrollView>
 
-      <ScrollView
+      <FlatList
+        onLayout={(event) => {
+          console.log(
+            '[HI-LINK CHATS] FLATLIST:',
+            event.nativeEvent.layout,
+          );
+        }}
+        data={filteredConversations}
+        keyExtractor={(conversation) =>
+          conversation.id
+        }
+        renderItem={({ item }) =>
+          renderConversation(item)
+        }
         style={styles.list}
-        contentContainerStyle={[
-          styles.listContent,
-          filteredConversations.length === 0 &&
-            styles.listEmptyContent,
-        ]}
-      >
-        {filteredConversations.length > 0 ? (
-          filteredConversations.map(
-            renderConversation,
-          )
-        ) : (
+        contentContainerStyle={
+          filteredConversations.length > 0
+            ? styles.listContent
+            : styles.listEmptyContent
+        }
+        ListEmptyComponent={
           <View style={styles.empty}>
             <View style={styles.emptyIcon}>
               <Ionicons
@@ -307,8 +363,9 @@ export default function ChatsScreen() {
               {emptyBody}
             </Text>
           </View>
-        )}
-      </ScrollView>
+        }
+        showsVerticalScrollIndicator={false}
+      />
 
       <Pressable
         style={styles.addButton}
@@ -402,11 +459,13 @@ function createStyles(colors: ThemeColors) {
   },
 
   listContent: {
+    flexGrow: 0,
+    flexShrink: 0,
     paddingHorizontal: 12,
     paddingTop: 0,
     paddingBottom: 120,
-    alignItems: 'stretch',
     justifyContent: 'flex-start',
+    alignItems: 'stretch',
   },
 
   listEmptyContent: {
@@ -440,6 +499,12 @@ function createStyles(colors: ThemeColors) {
     color: colors.accent,
     fontSize: 19,
     fontWeight: '900',
+  },
+
+  avatarImage: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
   },
 
   conversationBody: {

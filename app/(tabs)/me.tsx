@@ -23,9 +23,16 @@ import {
   setLocal,
 } from '../../src/storage/localStore';
 import { setOnboardingComplete } from '../../src/storage/onboarding';
+import { setSessionActive } from '../../src/storage/session';
 import { HiLinkUser } from '../../src/models/user';
-import { getPostsByAuthor } from '../../src/storage/posts';
+import { getPosts, getPostsByAuthor } from '../../src/storage/posts';
 import { Post } from '../../src/models/post';
+import { getReshares } from '../../src/storage/reshares';
+import { getLikedPostIds } from '../../src/storage/likedPosts';
+import {
+  getHiddenPostIds,
+  unhidePost,
+} from '../../src/storage/hiddenPosts';
 
 const PROFILE_PICTURE_KEY = 'profile_picture_uri';
 const COVER_IMAGE_KEY = 'cover_image_uri';
@@ -39,7 +46,12 @@ export default function MeScreen() {
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const [userPosts, setUserPosts] = useState<Post[]>([]);
-  const [activeTab, setActiveTab] = useState<'posts' | 'profile'>('posts');
+  const [resharedPosts, setResharedPosts] = useState<Post[]>([]);
+  const [likedPosts, setLikedPosts] = useState<Post[]>([]);
+  const [hiddenPosts, setHiddenPosts] = useState<Post[]>([]);
+  const [activeTab, setActiveTab] = useState<
+    'posts' | 'reshared' | 'liked' | 'hidden'
+  >('posts');
 
   const horizontalPadding = Math.max(16, Math.min(24, width * 0.05));
   const avatarSize = Math.min(76, width * 0.20);
@@ -79,10 +91,59 @@ export default function MeScreen() {
     );
 
     if (user) {
-      const posts = await getPostsByAuthor(user.id);
+      const allPosts = await getPosts();
+      const posts = allPosts.filter(
+        (post) => post.authorId === user.id,
+      );
+
+      const reshareRecords = await getReshares();
+      const myReshareRecords = reshareRecords.filter(
+        (record) => record.userId === user.id,
+      );
+
+      const reshared = myReshareRecords
+        .map((record) => {
+          const resharedPost = allPosts.find(
+            (post) => post.id === record.resharedPostId,
+          );
+
+          if (resharedPost) {
+            return resharedPost;
+          }
+
+          return allPosts.find(
+            (post) => post.id === record.postId,
+          );
+        })
+        .filter((post): post is Post => Boolean(post));
+
+      const likedIds = await getLikedPostIds(user.id);
+      const liked = likedIds
+        .map((postId) =>
+          allPosts.find(
+            (post) => post.id === postId,
+          ),
+        )
+        .filter((post): post is Post => Boolean(post));
+
+      const hiddenIds = await getHiddenPostIds(user.id);
+      const hidden = hiddenIds
+        .map((postId) =>
+          allPosts.find(
+            (post) => post.id === postId,
+          ),
+        )
+        .filter((post): post is Post => Boolean(post));
+
       setUserPosts(posts);
+      setResharedPosts(reshared);
+      setLikedPosts(liked);
+      setHiddenPosts(hidden);
     } else {
       setUserPosts([]);
+      setResharedPosts([]);
+      setLikedPosts([]);
+      setHiddenPosts([]);
     }
   }
 
@@ -188,7 +249,7 @@ export default function MeScreen() {
   async function handleLogout() {
     Alert.alert(
       'Log out?',
-      'You will need to complete the Hi-Link setup again to use this account on this device.',
+      'Your profile will stay saved on this device. You can sign back in or choose another account later.',
       [
         {
           text: 'Cancel',
@@ -199,10 +260,8 @@ export default function MeScreen() {
           style: 'destructive',
           onPress: async () => {
             await clearIdentity();
-            await setOnboardingComplete(false);
-            await setLocal(PROFILE_PICTURE_KEY, null);
-            await setLocal(COVER_IMAGE_KEY, null);
-            router.replace('/onboarding');
+            await setSessionActive(false);
+            router.replace('/');
           },
         },
       ],
@@ -225,31 +284,12 @@ export default function MeScreen() {
 
           <Pressable
             style={styles.settingsButton}
-            onPress={() =>
-              Alert.alert(
-                'Profile menu',
-                'Choose an action',
-                [
-                  {
-                    text: 'Settings',
-                    onPress: () =>
-                      router.push('/video-settings'),
-                  },
-                  {
-                    text: 'Log out',
-                    style: 'destructive',
-                    onPress: handleLogout,
-                  },
-                  {
-                    text: 'Cancel',
-                    style: 'cancel',
-                  },
-                ],
-              )
-            }
+            onPress={() => router.push('/video-settings')}
+            accessibilityRole="button"
+            accessibilityLabel="Settings"
           >
             <Ionicons
-              name="ellipsis-horizontal"
+              name="settings-outline"
               size={22}
               color={colors.text}
             />
@@ -472,354 +512,277 @@ export default function MeScreen() {
 
         <View
           style={[
-            styles.section,
+            styles.contentSection,
             { marginHorizontal: horizontalPadding },
           ]}
         >
-          <View style={styles.profileTabs}>
+          <View style={styles.contentTabs}>
             <Pressable
               style={[
-                styles.profileTab,
-                activeTab === 'posts' && styles.profileTabActive,
+                styles.contentTab,
+                activeTab === 'posts' && styles.contentTabActive,
               ]}
               onPress={() => setActiveTab('posts')}
+              accessibilityRole="button"
+              accessibilityLabel="Your posts"
             >
-              <Text
-                style={[
-                  styles.profileTabText,
-                  activeTab === 'posts' &&
-                    styles.profileTabTextActive,
-                ]}
-              >
-                POSTS
-              </Text>
+              <Ionicons
+                name="grid-outline"
+                size={24}
+                color={
+                  activeTab === 'posts'
+                    ? colors.text
+                    : colors.muted
+                }
+              />
             </Pressable>
 
             <Pressable
               style={[
-                styles.profileTab,
-                activeTab === 'profile' && styles.profileTabActive,
+                styles.contentTab,
+                activeTab === 'reshared' &&
+                  styles.contentTabActive,
               ]}
-              onPress={() => setActiveTab('profile')}
+              onPress={() => setActiveTab('reshared')}
+              accessibilityRole="button"
+              accessibilityLabel="Reshared posts"
             >
-              <Text
-                style={[
-                  styles.profileTabText,
-                  activeTab === 'profile' &&
-                    styles.profileTabTextActive,
-                ]}
-              >
-                PROFILE
-              </Text>
+              <Ionicons
+                name="repeat-outline"
+                size={25}
+                color={
+                  activeTab === 'reshared'
+                    ? colors.text
+                    : colors.muted
+                }
+              />
+            </Pressable>
+
+            <Pressable
+              style={[
+                styles.contentTab,
+                activeTab === 'liked' &&
+                  styles.contentTabActive,
+              ]}
+              onPress={() => setActiveTab('liked')}
+              accessibilityRole="button"
+              accessibilityLabel="Liked posts"
+            >
+              <Ionicons
+                name="heart-outline"
+                size={25}
+                color={
+                  activeTab === 'liked'
+                    ? colors.text
+                    : colors.muted
+                }
+              />
+            </Pressable>
+
+            <Pressable
+              style={[
+                styles.contentTab,
+                activeTab === 'hidden' &&
+                  styles.contentTabActive,
+              ]}
+              onPress={() => setActiveTab('hidden')}
+              accessibilityRole="button"
+              accessibilityLabel="Hidden posts"
+            >
+              <Ionicons
+                name="eye-off-outline"
+                size={25}
+                color={
+                  activeTab === 'hidden'
+                    ? colors.text
+                    : colors.muted
+                }
+              />
             </Pressable>
           </View>
 
-          {activeTab === 'posts' ? (
-            <View style={styles.profileSection}>
-              <View style={styles.postsTitleRow}>
-                <Text style={styles.sectionTitle}>
-                  Posts
-                </Text>
+          <View style={styles.contentTabIndicatorRow}>
+            <View
+              style={[
+                styles.contentTabIndicator,
+                {
+                  left:
+                    activeTab === 'posts'
+                      ? '0%'
+                      : activeTab === 'reshared'
+                        ? '25%'
+                        : activeTab === 'liked'
+                          ? '50%'
+                          : '75%',
+                },
+              ]}
+            />
+          </View>
 
+          <View style={styles.contentBody}>
+            <View style={styles.postGrid}>
+              {(activeTab === 'posts'
+                ? userPosts
+                : activeTab === 'reshared'
+                  ? resharedPosts
+                  : activeTab === 'liked'
+                    ? likedPosts
+                    : hiddenPosts
+              ).map((post) => (
                 <Pressable
-                  onPress={() => router.push('/my-posts')}
-                >
-                  <Text style={styles.viewAllText}>
-                    View all
-                  </Text>
-                </Pressable>
-              </View>
-
-              {userPosts.length > 0 ? (
-                <>
-                  <Text style={styles.postsCountLabel}>
-                    {userPosts.length}{' '}
-                    {userPosts.length === 1 ? 'post' : 'posts'}
-                  </Text>
-
-                  {userPosts.slice(0, 3).map((post) => (
-                    <Pressable
-                      key={post.id}
-                      style={styles.postPreviewCard}
-                      onPress={() => router.push('/my-posts')}
-                    >
-                      <View style={styles.postPreviewIconWrap}>
-                        <Ionicons
-                          name={getPostPreviewIcon(post) as any}
-                          size={22}
-                          color={colors.accent}
-                        />
-                      </View>
-
-                      <View style={styles.postPreviewBody}>
-                        <View style={styles.postPreviewTopRow}>
-                          <Text style={styles.postPreviewLabel}>
-                            {getPostPreviewLabel(post)}
-                          </Text>
-
-                          <Text style={styles.postPreviewDate}>
-                            {new Date(
-                              post.createdAt,
-                            ).toLocaleDateString()}
-                          </Text>
-                        </View>
-
-                        <Text
-                          style={styles.postPreviewText}
-                          numberOfLines={2}
-                        >
-                          {getPostPreviewText(post)}
-                        </Text>
-
-                        <Text style={styles.postPreviewMeta}>
-                          {post.visibility.replace('_', ' ')}
-                          {post.editedAt ? ' • Edited' : ''}
-                        </Text>
-                      </View>
-                    </Pressable>
-                  ))}
-                </>
-              ) : (
-                <View style={styles.postPreview}>
-                  <Ionicons
-                    name="create-outline"
-                    size={30}
-                    color={colors.muted}
-                  />
-
-                  <Text style={styles.postPreviewTitle}>
-                    No posts yet
-                  </Text>
-
-                  <Text style={styles.postPreviewText}>
-                    Your photos, videos, resources and updates will appear here.
-                  </Text>
-
-                  <Pressable
-                    style={styles.createPostButton}
-                    onPress={() => router.push('/create')}
-                  >
-                    <Ionicons
-                      name="add"
-                      size={18}
-                      color={colors.text}
-                    />
-                    <Text style={styles.createPostButtonText}>
-                      Create Post
-                    </Text>
-                  </Pressable>
-                </View>
-              )}
-            </View>
-          ) : (
-            <>
-              <View style={styles.profileSection}>
-                <View style={styles.profileSectionHeader}>
-                  <Text style={styles.sectionTitle}>
-                    School profile
-                  </Text>
-
-                  <Pressable
-                    onPress={() => router.push('/edit-profile')}
-                  >
-                    <Ionicons
-                      name="create-outline"
-                      size={19}
-                      color={colors.accent}
-                    />
-                  </Pressable>
-                </View>
-
-                {identity?.schoolName ? (
-                  <Detail
-                    icon="school-outline"
-                    label={identity.schoolName}
-                  />
-                ) : null}
-
-                {identity?.form ? (
-                  <Detail
-                    icon="book-outline"
-                    label={identity.form}
-                  />
-                ) : null}
-
-                {identity?.stream ? (
-                  <Detail
-                    icon="people-outline"
-                    label={identity.stream}
-                  />
-                ) : null}
-
-                {identity?.house ? (
-                  <Detail
-                    icon="home-outline"
-                    label={`House ${identity.house}`}
-                  />
-                ) : null}
-
-                {identity?.boardingStatus &&
-                identity.boardingStatus !== 'unknown' ? (
-                  <Detail
-                    icon="bed-outline"
-                    label={
-                      identity.boardingStatus === 'boarding'
-                        ? 'Boarding'
-                        : 'Day scholar'
-                    }
-                  />
-                ) : null}
-              </View>
-
-              {(identity?.schoolName ||
-                identity?.form ||
-                identity?.stream) ? (
-                <View style={styles.profileSection}>
-                  <Text style={styles.sectionTitle}>
-                    Academic profile
-                  </Text>
-
-                  {identity.schoolName ? (
-                    <ProfileInfo
-                      icon="business-outline"
-                      label="School"
-                      value={identity.schoolName}
-                    />
-                  ) : null}
-
-                  {identity.form ? (
-                    <ProfileInfo
-                      icon="school-outline"
-                      label="Form"
-                      value={identity.form}
-                    />
-                  ) : null}
-
-                  {identity.stream ? (
-                    <ProfileInfo
-                      icon="people-outline"
-                      label="Stream"
-                      value={identity.stream}
-                    />
-                  ) : null}
-                </View>
-              ) : null}
-
-              {(identity?.clubs?.length ||
-                identity?.societies?.length) ? (
-                <View style={styles.profileSection}>
-                  <Text style={styles.sectionTitle}>
-                    Clubs & societies
-                  </Text>
-
-                  <View style={styles.tagList}>
-                    {[
-                      ...(identity.clubs ?? []),
-                      ...(identity.societies ?? []),
-                    ].map((item, index) => (
-                      <View
-                        key={`${item}-${index}`}
-                        style={styles.profileTag}
-                      >
-                        <Ionicons
-                          name="people-outline"
-                          size={14}
-                          color={colors.accent}
-                        />
-                        <Text style={styles.profileTagText}>
-                          {item}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              ) : null}
-
-              {identity?.interests?.length ? (
-                <View style={styles.profileSection}>
-                  <Text style={styles.sectionTitle}>
-                    Interests
-                  </Text>
-
-                  <View style={styles.tagList}>
-                    {identity.interests.map((interest) => (
-                      <View
-                        key={interest}
-                        style={styles.profileTag}
-                      >
-                        <Ionicons
-                          name="sparkles-outline"
-                          size={14}
-                          color={colors.blue}
-                        />
-                        <Text style={styles.profileTagText}>
-                          {interest}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              ) : null}
-
-              <View style={styles.profileSection}>
-                <Text style={styles.sectionTitle}>
-                  Your Hi-Link
-                </Text>
-
-                <ProfileRow
-                  icon="repeat-outline"
-                  title="Reshared"
-                  subtitle="Posts you have reshared"
+                  key={post.id}
+                  style={styles.postTile}
                   onPress={() => {
-                    if (identity) {
+                    if (post.type === 'video') {
                       router.push({
-                        pathname: '/profile/[id]/reshared',
-                        params: { id: identity.id },
+                        pathname: '/video/[id]',
+                        params: {
+                          id: post.id,
+                        },
                       });
+                      return;
                     }
+
+                    router.push({
+                      pathname: '/comments/[postId]',
+                      params: {
+                        postId: post.id,
+                      },
+                    });
                   }}
-                />
+                  accessibilityRole="button"
+                  accessibilityLabel={`${getPostPreviewLabel(post)} by ${post.authorName}`}
+                >
+                  {post.attachment?.uri &&
+                  (post.type === 'photo' ||
+                    post.type === 'video') ? (
+                    <Image
+                      source={{
+                        uri: post.attachment.uri,
+                      }}
+                      style={styles.postTileImage}
+                    />
+                  ) : (
+                    <View style={styles.postTileText}>
+                      <Ionicons
+                        name={getPostPreviewIcon(post)}
+                        size={28}
+                        color={colors.accent}
+                      />
 
-                <ProfileRow
-                  icon="bookmark-outline"
-                  title="Saved resources"
-                  subtitle="Notes, exams and study materials"
-                  onPress={() => router.push('/saved')}
-                />
+                      <Text
+                        style={styles.postTilePreview}
+                        numberOfLines={4}
+                      >
+                        {getPostPreviewText(post)}
+                      </Text>
+                    </View>
+                  )}
 
-                <ProfileRow
-                  icon="school-outline"
-                  title="Academics"
-                  subtitle="CBC/CBE learning, subjects and study resources"
-                  onPress={() => router.push('/academics')}
-                />
+                  {post.type === 'video' ? (
+                    <View style={styles.postTileBadge}>
+                      <Ionicons
+                        name="play"
+                        size={13}
+                        color="#FFFFFF"
+                      />
+                    </View>
+                  ) : null}
 
-                <ProfileRow
-                  icon="download-outline"
-                  title="Downloads"
-                  subtitle="Files available offline"
-                />
+                  {activeTab === 'reshared' ? (
+                    <View style={styles.postTileBadge}>
+                      <Ionicons
+                        name="repeat"
+                        size={14}
+                        color="#FFFFFF"
+                      />
+                    </View>
+                  ) : null}
 
-                <ProfileRow
-                  icon="shield-checkmark-outline"
-                  title="Privacy & Security"
-                  subtitle="Control your safety and visibility"
-                  onPress={() =>
-                    router.push('/privacy-security')
+                  {activeTab === 'hidden' ? (
+                    <Pressable
+                      style={styles.postTileRestore}
+                      onPress={(event) => {
+                        event.stopPropagation();
+
+                        if (!identity) {
+                          return;
+                        }
+
+                        Alert.alert(
+                          'Unhide this post?',
+                          'This post will become visible in Home again.',
+                          [
+                            {
+                              text: 'Decline',
+                              style: 'cancel',
+                            },
+                            {
+                              text: 'Accept',
+                              onPress: () => {
+                                void (async () => {
+                                  await unhidePost(
+                                    post.id,
+                                    identity.id,
+                                  );
+
+                                  await loadProfile();
+                                })();
+                              },
+                            },
+                          ],
+                        );
+                      }}
+                      hitSlop={6}
+                      accessibilityRole="button"
+                      accessibilityLabel="Unhide post"
+                    >
+                      <Ionicons
+                        name="eye-outline"
+                        size={17}
+                        color="#FFFFFF"
+                      />
+                    </Pressable>
+                  ) : null}
+                </Pressable>
+              ))}
+            </View>
+
+            {(activeTab === 'posts'
+              ? userPosts
+              : activeTab === 'reshared'
+                ? resharedPosts
+                : activeTab === 'liked'
+                  ? likedPosts
+                  : hiddenPosts
+            ).length === 0 ? (
+              <View style={styles.emptyContent}>
+                <Ionicons
+                  name={
+                    activeTab === 'posts'
+                      ? 'images-outline'
+                      : activeTab === 'reshared'
+                        ? 'repeat-outline'
+                        : activeTab === 'liked'
+                          ? 'heart-outline'
+                          : 'eye-off-outline'
                   }
+                  size={42}
+                  color={colors.muted}
                 />
 
-                <ProfileRow
-                  icon="settings-outline"
-                  title="Settings"
-                  subtitle="App preferences and video settings"
-                  onPress={() =>
-                    router.push('/video-settings')
-                  }
-                />
+                <Text style={styles.emptyContentTitle}>
+                  {activeTab === 'posts'
+                    ? 'No posts yet'
+                    : activeTab === 'reshared'
+                      ? 'Nothing reshared yet'
+                      : activeTab === 'liked'
+                        ? 'No liked posts yet'
+                        : 'No hidden posts'}
+                </Text>
               </View>
-            </>
-          )}
+            ) : null}
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -1344,6 +1307,125 @@ function createStyles(colors: ThemeColors) {
     color: colors.accent,
     fontSize: 14,
     fontWeight: '800',
+  },
+
+  contentSection: {
+    marginTop: 24,
+  },
+
+  contentTabs: {
+    height: 54,
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+  },
+
+  contentTab: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+
+  contentTabActive: {
+    borderBottomColor: colors.text,
+  },
+
+  contentTabIndicatorRow: {
+    height: 0,
+    position: 'relative',
+  },
+
+  contentTabIndicator: {
+    position: 'absolute',
+    top: -2,
+    width: '25%',
+    height: 2,
+    backgroundColor: colors.text,
+  },
+
+  contentBody: {
+    minHeight: 180,
+    paddingTop: 14,
+    paddingBottom: 10,
+  },
+
+  postGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 2,
+  },
+
+  postTile: {
+    width: '32.8%',
+    aspectRatio: 0.78,
+    backgroundColor: colors.card,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+
+  postTileImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+
+  postTileText: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    backgroundColor: colors.cardRaised,
+  },
+
+  postTilePreview: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 17,
+    textAlign: 'center',
+    marginTop: 10,
+  },
+
+  postTileBadge: {
+    position: 'absolute',
+    right: 7,
+    top: 7,
+    width: 27,
+    height: 27,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  postTileRestore: {
+    position: 'absolute',
+    right: 7,
+    bottom: 7,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.72)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  emptyContent: {
+    minHeight: 220,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+
+  emptyContentTitle: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '800',
+    marginTop: 12,
   },
 
   profileSection: {

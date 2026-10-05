@@ -19,6 +19,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 
 import { ThemeColors, useTheme } from '../src/theme/ThemeProvider';
+import { getIdentity } from '../src/storage/identity';
 import { getPosts } from '../src/storage/posts';
 import { getBlockedUserIds, unblockUser } from '../src/storage/blockedUsers';
 import { getHiddenPostIds, unhidePost } from '../src/storage/hiddenPosts';
@@ -47,10 +48,16 @@ export default function PrivacySecurityScreen() {
     useState(false);
 
   const load = useCallback(async () => {
+    const identity = await getIdentity();
+
+    if (!identity) {
+      return;
+    }
+
     const [blockedIds, hiddenIds, posts] =
       await Promise.all([
         getBlockedUserIds(),
-        getHiddenPostIds(),
+        getHiddenPostIds(identity.id),
         getPosts(),
       ]);
 
@@ -155,7 +162,16 @@ export default function PrivacySecurityScreen() {
         {
           text: 'Show post',
           onPress: async () => {
-            await unhidePost(postId);
+            const identity = await getIdentity();
+
+            if (!identity) {
+              return;
+            }
+
+            await unhidePost(
+              postId,
+              identity.id,
+            );
             await load();
           },
         },

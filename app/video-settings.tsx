@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -22,6 +23,8 @@ import {
   ThemeMode,
   useTheme,
 } from '../src/theme/ThemeProvider';
+import { clearIdentity } from '../src/storage/identity';
+import { setSessionActive } from '../src/storage/session';
 
 export default function VideoSettingsScreen() {
   const { colors, mode, setMode } = useTheme();
@@ -72,6 +75,35 @@ export default function VideoSettingsScreen() {
     });
   }
 
+  function openComingSoon(title: string) {
+    Alert.alert(
+      title,
+      `${title} settings will be available here as the HI-LINK feature is connected.`,
+    );
+  }
+
+  function handleLogout() {
+    Alert.alert(
+      'Log out',
+      'Your saved profile will remain available for you to sign back in.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Log out',
+          style: 'destructive',
+          onPress: async () => {
+            await clearIdentity();
+            await setSessionActive(false);
+            router.replace('/');
+          },
+        },
+      ],
+    );
+  }
+
   if (loading) {
     return (
       <View style={styles.loadingScreen}>
@@ -110,13 +142,41 @@ export default function VideoSettingsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
       >
+        <Text style={styles.settingsIntro}>
+          Manage your HI-LINK account, privacy,
+          appearance, chats and app preferences.
+        </Text>
+
         <Text style={styles.sectionTitle}>
-          APPEARANCE
+          ACCOUNT
+        </Text>
+
+        <View style={styles.menuCard}>
+          <SettingsRow
+            icon="people-outline"
+            title="Profiles & Accounts"
+            subtitle="Manage saved HI-LINK profiles and accounts"
+            onPress={() => router.push('/profiles')}
+            colors={colors}
+          />
+
+          <SettingsRow
+            icon="person-outline"
+            title="Account"
+            subtitle="Identity, username and account information"
+            onPress={() => openComingSoon('Account')}
+            colors={colors}
+            divider
+          />
+        </View>
+
+        <Text style={styles.sectionTitle}>
+          PREFERENCES
         </Text>
 
         <View style={styles.card}>
           <Text style={styles.optionTitle}>
-            Theme
+            Appearance
           </Text>
 
           <Text style={styles.description}>
@@ -174,13 +234,49 @@ export default function VideoSettingsScreen() {
           </View>
         </View>
 
+        <SettingsRow
+          icon="notifications-outline"
+          title="Notifications"
+          subtitle="Messages, calls, events and campus alerts"
+          onPress={() => openComingSoon('Notifications')}
+          colors={colors}
+        />
+
+        <SettingsRow
+          icon="shield-checkmark-outline"
+          title="Privacy & Security"
+          subtitle="Privacy, hidden posts and security controls"
+          onPress={() => router.push('/privacy-security')}
+          colors={colors}
+        />
+
         <Text style={styles.sectionTitle}>
-          VIDEO DISPLAY
+          COMMUNICATION
+        </Text>
+
+        <SettingsRow
+          icon="chatbubbles-outline"
+          title="Chats"
+          subtitle="Chat preferences and message controls"
+          onPress={() => openComingSoon('Chats')}
+          colors={colors}
+        />
+
+        <SettingsRow
+          icon="call-outline"
+          title="Calls"
+          subtitle="Voice and video call preferences"
+          onPress={() => openComingSoon('Calls')}
+          colors={colors}
+        />
+
+        <Text style={styles.sectionTitle}>
+          MEDIA
         </Text>
 
         <View style={styles.card}>
           <Text style={styles.optionTitle}>
-            Video size
+            Video Display
           </Text>
 
           <Text style={styles.description}>
@@ -259,10 +355,6 @@ export default function VideoSettingsScreen() {
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>
-          VIDEO PLAYBACK
-        </Text>
-
         <View style={styles.card}>
           <View style={styles.settingRow}>
             <View style={styles.settingCopy}>
@@ -293,6 +385,38 @@ export default function VideoSettingsScreen() {
           </View>
         </View>
 
+        <Text style={styles.sectionTitle}>
+          DATA & STORAGE
+        </Text>
+
+        <SettingsRow
+          icon="phone-portrait-outline"
+          title="Storage & Data"
+          subtitle="Downloads, media and data usage"
+          onPress={() => openComingSoon('Storage & Data')}
+          colors={colors}
+        />
+
+        <SettingsRow
+          icon="cloud-upload-outline"
+          title="Backup"
+          subtitle="Protect your local HI-LINK data"
+          onPress={() => openComingSoon('Backup')}
+          colors={colors}
+        />
+
+        <Text style={styles.sectionTitle}>
+          ABOUT
+        </Text>
+
+        <SettingsRow
+          icon="information-circle-outline"
+          title="About HI-LINK"
+          subtitle="Version, credits and application information"
+          onPress={() => openComingSoon('About HI-LINK')}
+          colors={colors}
+        />
+
         <View style={styles.infoBox}>
           <Ionicons
             name="information-circle-outline"
@@ -306,8 +430,90 @@ export default function VideoSettingsScreen() {
             problems.
           </Text>
         </View>
+
+        <View style={styles.accountActions}>
+          <Pressable
+            style={styles.logoutButton}
+            onPress={handleLogout}
+          >
+            <Ionicons
+              name="log-out-outline"
+              size={20}
+              color={colors.text}
+            />
+            <Text style={styles.logoutText}>
+              Log out
+            </Text>
+          </Pressable>
+
+          <Pressable
+            style={styles.deleteButton}
+            onPress={() => router.push('/profiles')}
+          >
+            <Ionicons
+              name="trash-outline"
+              size={19}
+              color={colors.danger}
+            />
+            <Text style={styles.deleteText}>
+              Delete profile
+            </Text>
+          </Pressable>
+        </View>
       </ScrollView>
     </View>
+  );
+}
+
+function SettingsRow({
+  icon,
+  title,
+  subtitle,
+  onPress,
+  colors,
+  divider = false,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  subtitle: string;
+  onPress: () => void;
+  colors: ThemeColors;
+  divider?: boolean;
+}) {
+  const styles = createStyles(colors);
+
+  return (
+    <Pressable
+      style={[
+        styles.settingsRow,
+        divider && styles.settingsRowDivider,
+      ]}
+      onPress={onPress}
+    >
+      <View style={styles.settingsIcon}>
+        <Ionicons
+          name={icon}
+          size={21}
+          color={colors.accent}
+        />
+      </View>
+
+      <View style={styles.settingsCopy}>
+        <Text style={styles.settingsTitle}>
+          {title}
+        </Text>
+
+        <Text style={styles.settingsSubtitle}>
+          {subtitle}
+        </Text>
+      </View>
+
+      <Ionicons
+        name="chevron-forward"
+        size={19}
+        color={colors.muted}
+      />
+    </Pressable>
   );
 }
 
@@ -356,6 +562,71 @@ function createStyles(colors: ThemeColors) {
   content: {
     padding: 18,
     paddingBottom: 40,
+  },
+
+  settingsIntro: {
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 19,
+    marginBottom: 8,
+  },
+
+  menuCard: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 18,
+    marginBottom: 22,
+    overflow: 'hidden',
+  },
+
+  settingsRow: {
+    minHeight: 74,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+
+  settingsRowDivider: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    borderWidth: 0,
+    borderRadius: 0,
+    marginBottom: 0,
+  },
+
+  settingsIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: colors.cardRaised,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+
+  settingsCopy: {
+    flex: 1,
+    paddingRight: 8,
+  },
+
+  settingsTitle: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+
+  settingsSubtitle: {
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 3,
   },
 
   sectionTitle: {
@@ -474,6 +745,47 @@ function createStyles(colors: ThemeColors) {
     color: colors.muted,
     fontSize: 12,
     lineHeight: 18,
+  },
+
+  accountActions: {
+    marginTop: 24,
+    gap: 10,
+  },
+
+  logoutButton: {
+    minHeight: 52,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+
+  logoutText: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+
+  deleteButton: {
+    minHeight: 52,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    backgroundColor: colors.card,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+
+  deleteText: {
+    color: colors.danger,
+    fontSize: 15,
+    fontWeight: '700',
   },
   });
 }
