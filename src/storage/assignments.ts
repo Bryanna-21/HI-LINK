@@ -183,6 +183,15 @@ async function canReview(actorId: string, assignment: Assignment) {
     : false;
 }
 
+export const STATE_LABELS: Record<SubmissionState, string> = {
+  not_started: 'Not started',
+  in_progress: 'In progress',
+  submitted: 'Submitted',
+  late: 'Submitted late',
+  returned: 'Returned',
+  completed: 'Completed',
+};
+
 export function isOverdue(assignment: Assignment, now = new Date()): boolean {
   return Boolean(assignment.dueAt) && new Date(assignment.dueAt as string).getTime() < now.getTime();
 }
