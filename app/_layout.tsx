@@ -1,5 +1,12 @@
+import { useEffect } from 'react';
+import { AppState } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+
+import {
+  bootstrapCampus,
+  syncReminders,
+} from '../src/storage/campus';
 
 import {
   ThemeProvider,
@@ -8,6 +15,21 @@ import {
 
 function RootNavigator() {
   const { colors, resolvedMode } = useTheme();
+
+  useEffect(() => {
+    // Register known accounts with the campus layer, then surface any due
+    // reminders. Reminders also refresh whenever the app returns to the
+    // foreground (there is no background service to wake it).
+    void bootstrapCampus().then(syncReminders);
+
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        void syncReminders();
+      }
+    });
+
+    return () => subscription.remove();
+  }, []);
 
   return (
     <>

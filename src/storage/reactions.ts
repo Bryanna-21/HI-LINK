@@ -1,6 +1,8 @@
 import { getLocal, removeLocal, setLocal } from './localStore';
 import { getActiveUserId } from './accountScope';
-import { patchPost } from './posts';
+import { getPost, patchPost } from './posts';
+import { notify } from './notifications';
+import { getProfileMap } from './liveProfiles';
 
 /**
  * Single reaction system for posts and videos.
@@ -201,7 +203,23 @@ export async function setUserReaction(
 
   const summary = summarize(next, postId);
 
-  await patchPost(postId, () => ({ likes: summary.total }));
+  const post = await patchPost(postId, () => ({ likes: summary.total }));
+
+  if (reaction && post && post.authorId !== userId) {
+    const actor = (await getProfileMap()).get(userId);
+
+    await notify({
+      recipientId: post.authorId,
+      type: 'reaction',
+      title: `${actor?.name ?? 'Someone'} reacted to your post`,
+      body: reaction,
+      actorId: userId,
+      entityType: 'post',
+      entityId: postId,
+      dedupeKey: `reaction:${postId}:${userId}`,
+      route: { pathname: '/comments/[postId]', params: { postId } },
+    });
+  }
 
   return { reaction, summary };
 }
