@@ -18,10 +18,6 @@ import {
   clearIdentity,
   getIdentity,
 } from '../../src/storage/identity';
-import {
-  getLocal,
-  setLocal,
-} from '../../src/storage/localStore';
 import { setOnboardingComplete } from '../../src/storage/onboarding';
 import { setSessionActive } from '../../src/storage/session';
 import { HiLinkUser } from '../../src/models/user';
@@ -34,8 +30,6 @@ import {
   unhidePost,
 } from '../../src/storage/hiddenPosts';
 
-const PROFILE_PICTURE_KEY = 'profile_picture_uri';
-const COVER_IMAGE_KEY = 'cover_image_uri';
 
 export default function MeScreen() {
   const { colors } = useTheme();
@@ -73,22 +67,13 @@ export default function MeScreen() {
 
   async function loadProfile() {
     const user = await getIdentity();
-    const savedProfilePicture = await getLocal<string | null>(
-      PROFILE_PICTURE_KEY,
-      null,
-    );
-    const savedCoverImage = await getLocal<string | null>(
-      COVER_IMAGE_KEY,
-      null,
-    );
 
+    // The signed-in identity is the only source of the photos. (Older builds
+    // also kept a device-global copy, which leaked one account's photo into
+    // another account's profile.)
     setIdentity(user);
-    setProfilePicture(
-      user?.avatarUri ?? savedProfilePicture,
-    );
-    setCoverImage(
-      user?.coverUri ?? savedCoverImage,
-    );
+    setProfilePicture(user?.avatarUri ?? null);
+    setCoverImage(user?.coverUri ?? null);
 
     if (user) {
       const allPosts = await getPosts();
@@ -173,7 +158,6 @@ export default function MeScreen() {
 
     if (type === 'profile') {
       setProfilePicture(uri);
-      await setLocal(PROFILE_PICTURE_KEY, uri);
 
       if (identity) {
         const updatedIdentity: HiLinkUser = {
@@ -194,7 +178,6 @@ export default function MeScreen() {
       }
     } else {
       setCoverImage(uri);
-      await setLocal(COVER_IMAGE_KEY, uri);
 
       if (identity) {
         const updatedIdentity: HiLinkUser = {
@@ -207,8 +190,11 @@ export default function MeScreen() {
 
         const { saveIdentity } =
           await import('../../src/storage/identity');
+        const { upsertUser } =
+          await import('../../src/storage/users');
 
         await saveIdentity(updatedIdentity);
+        await upsertUser(updatedIdentity);
       }
     }
   }
