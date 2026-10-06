@@ -22,11 +22,18 @@ import {
 import { Conversation } from '../../src/models/chat';
 import { getPostsByAuthor } from '../../src/storage/posts';
 import {
+  ConnectionState,
+  getConnectionState,
   getFollowerCount,
   getFollowingCount,
   isFollowing,
+  resolveFollowRequest,
   toggleFollow,
 } from '../../src/storage/follows';
+import {
+  canViewPost,
+  getViewerContext,
+} from '../../src/storage/visibility';
 import { getUserById } from '../../src/storage/users';
 import HiLinkVideoPlayer from '../../src/components/HiLinkVideoPlayer';
 
@@ -91,6 +98,8 @@ export default function ProfileScreen() {
   const [followerCount, setFollowerCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [following, setFollowing] = useState(false);
+  const [connection, setConnection] = useState<ConnectionState>('none');
+  const [privateLocked, setPrivateLocked] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [messaging, setMessaging] = useState(false);
@@ -120,42 +129,29 @@ export default function ProfileScreen() {
       return;
     }
 
-    if (resolvedUser.id === identity.id) {
-      const { getLocal } = await import(
-        '../../src/storage/localStore'
-      );
+    setUser(resolvedUser);
 
-      const savedProfilePicture =
-        await getLocal<string | null>(
-          'profile_picture_uri',
-          null,
-        );
+    const isSelf = identity.id === resolvedUser.id;
+    const state = isSelf
+      ? 'none'
+      : await getConnectionState(identity.id, resolvedUser.id);
 
-      const savedCoverImage =
-        await getLocal<string | null>(
-          'cover_image_uri',
-          null,
-        );
+    setConnection(state);
 
-      setUser({
-        ...resolvedUser,
-        avatarUri:
-          resolvedUser.avatarUri ??
-          savedProfilePicture ??
-          undefined,
-        coverUri:
-          resolvedUser.coverUri ??
-          savedCoverImage ??
-          undefined,
-      });
-    } else {
-      setUser(resolvedUser);
-    }
+    // Another account that blocked the viewer is not visible at all.
+    const privateLocked =
+      !isSelf && resolvedUser.isPrivate === true && state !== 'following';
 
-    const posts = await getPostsByAuthor(
-      resolvedUser.id,
-    );
+    const authored = await getPostsByAuthor(resolvedUser.id);
+    const viewerContext = await getViewerContext();
 
+    // Respect post visibility (school / class / group) and private accounts.
+    const posts =
+      state === 'unavailable' || privateLocked
+        ? []
+        : authored.filter((post) => canViewPost(post, viewerContext));
+
+    setPrivateLocked(privateLocked);
     setProfilePosts(posts);
     setPostCount(posts.length);
 
@@ -181,6 +177,15 @@ export default function ProfileScreen() {
     setLoading(false);
   }, [id]);
 
+  async function answerRequest(accept: boolean) {
+    if (!identityId || !user) {
+      return;
+    }
+
+    await resolveFollowRequest(identityId, user.id, accept);
+    await loadProfile();
+  }
+
   async function handleFollowToggle() {
     if (
       !identityId ||
@@ -194,12 +199,12 @@ export default function ProfileScreen() {
     setFollowBusy(true);
 
     try {
-      const nextFollowing = await toggleFollow(
-        identityId,
-        user.id,
-      );
+      await toggleFollow(identityId, user.id);
 
-      setFollowing(nextFollowing);
+      const nextState = await getConnectionState(identityId, user.id);
+
+      setConnection(nextState);
+      setFollowing(nextState === 'following');
 
       const [followers, followingCountValue] =
         await Promise.all([
@@ -492,16 +497,46 @@ export default function ProfileScreen() {
               </Text>
             </Pressable>
 
+            {connection === 'request_received' && user.id !== identityId ? (
+              <>
+                <Pressable
+                  style={styles.primaryButton}
+                  onPress={() => answerRequest(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Accept follow request"
+                >
+                  <Text style={styles.primaryButtonText}>Accept</Text>
+                </Pressable>
+
+                <Pressable
+                  style={styles.secondaryButton}
+                  onPress={() => answerRequest(false)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Decline follow request"
+                >
+                  <Text style={styles.secondaryButtonText}>Decline</Text>
+                </Pressable>
+              </>
+            ) : null}
+
             {user.id !==
-            identityId ? (
+            identityId && connection !== 'request_received' ? (
               <Pressable
                 style={[
                   styles.primaryButton,
-                  following &&
+                  (following || connection === 'requested') &&
                     styles.primaryButtonFollowing,
                 ]}
                 onPress={handleFollowToggle}
-                disabled={followBusy}
+                disabled={followBusy || connection === 'unavailable'}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  connection === 'following'
+                    ? 'Unfollow'
+                    : connection === 'requested'
+                      ? 'Cancel follow request'
+                      : 'Follow'
+                }
               >
                 {followBusy ? (
                   <ActivityIndicator
@@ -521,9 +556,13 @@ export default function ProfileScreen() {
                 )}
 
                 <Text style={styles.primaryButtonText}>
-                  {following
+                  {connection === 'following'
                     ? 'Following'
-                    : 'Follow'}
+                    : connection === 'requested'
+                      ? 'Requested'
+                      : connection === 'follows_you'
+                        ? 'Follow back'
+                        : 'Follow'}
                 </Text>
               </Pressable>
             ) : null}
@@ -902,18 +941,29 @@ export default function ProfileScreen() {
           ) : (
             <View style={styles.emptyPosts}>
               <Ionicons
-                name="images-outline"
+                name={
+                  privateLocked
+                    ? 'lock-closed-outline'
+                    : 'images-outline'
+                }
                 size={30}
                 color={colors.muted}
               />
 
               <Text style={styles.emptyPostsTitle}>
-                No posts yet
+                {privateLocked
+                  ? 'This account is private'
+                  : connection === 'unavailable'
+                    ? 'Profile unavailable'
+                    : 'No posts yet'}
               </Text>
 
               <Text style={styles.emptyPostsText}>
-                Posts from this profile will appear
-                here.
+                {privateLocked
+                  ? 'Follow this student and wait for them to accept to see their posts.'
+                  : connection === 'unavailable'
+                    ? 'You cannot view this profile.'
+                    : 'Posts you are allowed to see will appear here.'}
               </Text>
             </View>
           )}

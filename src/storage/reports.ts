@@ -1,5 +1,7 @@
 import { PostReport } from '../models/report';
 import { getLocal, setLocal } from './localStore';
+import { submitReport } from './moderation';
+import { getPost } from './posts';
 
 const REPORTS_KEY = 'post_reports';
 
@@ -28,6 +30,30 @@ export async function addReport(
     ...reports,
     report,
   ]);
+
+  // Mirror into the unified moderation queue so reviewers see it.
+  const post = await getPost(report.postId);
+
+  await submitReport(report.reporterId, {
+    targetType: 'post',
+    targetId: report.postId,
+    reason:
+      report.reason === 'bullying'
+        ? 'harassment'
+        : report.reason === 'hate'
+          ? 'hate'
+          : report.reason === 'academic_misconduct'
+            ? 'academic_misconduct'
+            : report.reason === 'inappropriate'
+              ? 'inappropriate'
+              : report.reason === 'spam'
+                ? 'spam'
+                : 'other',
+    description: report.details,
+    targetOwnerId: post?.authorId,
+    institutionId: post?.schoolId,
+    communityId: post?.communityId,
+  });
 }
 
 export async function hasReportedPost(
