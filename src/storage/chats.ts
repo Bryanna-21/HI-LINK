@@ -4,6 +4,7 @@ import {
 } from '../models/chat';
 import { getLocal, setLocal } from './localStore';
 import { getIdentity } from './identity';
+import { getProfileMap } from './liveProfiles';
 
 const CONVERSATIONS_KEY = 'chat_conversations';
 const MESSAGES_KEY = 'chat_messages';
@@ -47,19 +48,24 @@ export async function getConversations(): Promise<Conversation[]> {
     },
   );
 
+  // Resolve every participant's CURRENT profile by stable id. The stored
+  // participant snapshot is only a fallback for people unknown on this device.
+  const profiles = await getProfileMap();
+
   for (const conversation of visibleConversations) {
     conversation.participants =
-      conversation.participants.map(
-        (participant) =>
-          participant.id === identity.id
-            ? {
-                ...participant,
-                name: identity.name,
-                username: identity.username,
-                avatarUri: identity.avatarUri,
-              }
-            : participant,
-      );
+      conversation.participants.map((participant) => {
+        const profile = profiles.get(participant.id);
+
+        return profile
+          ? {
+              ...participant,
+              name: profile.name,
+              username: profile.username,
+              avatarUri: profile.avatarUri,
+            }
+          : participant;
+      });
   }
 
   if (changed) {
@@ -118,9 +124,31 @@ export async function getConversation(
 export async function getConversationMessages(
   conversationId: string,
 ): Promise<Message[]> {
-  const messages = await getMessages();
+  // Account isolation: messages are only readable through a conversation the
+  // signed-in account owns. Never rely on the UI to hide another account's chat.
+  const conversation = await getConversation(conversationId);
+
+  if (!conversation) {
+    return [];
+  }
+
+  const [messages, profiles] = await Promise.all([
+    getMessages(),
+    getProfileMap(),
+  ]);
 
   return messages
+    .map((message) => {
+      const profile = profiles.get(message.senderId);
+
+      return profile
+        ? {
+            ...message,
+            senderName: profile.name,
+            senderUsername: profile.username,
+          }
+        : message;
+    })
     .filter(
       (message) =>
         message.conversationId ===

@@ -1,4 +1,4 @@
-import { getLocal, setLocal } from './localStore';
+import { getScopedLocal, setScopedLocal } from './accountScope';
 
 export interface VideoHistoryRecord {
   postId: string;
@@ -11,7 +11,7 @@ const MAX_VIDEO_HISTORY = 30;
 export async function getVideoHistory(): Promise<
   VideoHistoryRecord[]
 > {
-  return getLocal<VideoHistoryRecord[]>(
+  return getScopedLocal<VideoHistoryRecord[]>(
     VIDEO_HISTORY_KEY,
     [],
   );
@@ -36,7 +36,7 @@ export async function recordVideoWatch(
     ),
   ].slice(0, MAX_VIDEO_HISTORY);
 
-  await setLocal(
+  await setScopedLocal(
     VIDEO_HISTORY_KEY,
     next,
   );
@@ -53,5 +53,5 @@ export async function getRecentlyWatchedVideoIds(
 }
 
 export async function clearVideoHistory(): Promise<void> {
-  await setLocal(VIDEO_HISTORY_KEY, []);
+  await setScopedLocal(VIDEO_HISTORY_KEY, []);
 }

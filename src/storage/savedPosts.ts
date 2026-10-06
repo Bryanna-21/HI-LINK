@@ -1,9 +1,9 @@
-import { getLocal, setLocal } from './localStore';
+import { getScopedLocal, setScopedLocal } from './accountScope';
 
 const SAVED_POST_IDS_KEY = 'saved_post_ids';
 
 export async function getSavedPostIds(): Promise<string[]> {
-  return getLocal<string[]>(
+  return getScopedLocal<string[]>(
     SAVED_POST_IDS_KEY,
     [],
   );
@@ -26,7 +26,7 @@ export async function savePost(
     return;
   }
 
-  await setLocal(
+  await setScopedLocal(
     SAVED_POST_IDS_KEY,
     [postId, ...savedIds],
   );
@@ -37,7 +37,7 @@ export async function unsavePost(
 ): Promise<void> {
   const savedIds = await getSavedPostIds();
 
-  await setLocal(
+  await setScopedLocal(
     SAVED_POST_IDS_KEY,
     savedIds.filter(
       (id) => id !== postId,

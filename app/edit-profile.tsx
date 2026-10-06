@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { ThemeColors, useTheme } from '../src/theme/ThemeProvider';
 import { getIdentity, saveIdentity } from '../src/storage/identity';
+import { upsertUser } from '../src/storage/users';
 import { HiLinkUser } from '../src/models/user';
 
 const FORMS = [
@@ -216,6 +217,9 @@ export default function EditProfile() {
       };
 
       await saveIdentity(updatedUser);
+      // Keep the shared directory in sync so posts, chats and other accounts
+      // resolve this student's current name/photo.
+      await upsertUser(updatedUser);
 
       Alert.alert(
         'Profile updated',

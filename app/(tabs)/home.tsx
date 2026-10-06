@@ -59,6 +59,7 @@ import {
   setPostReaction,
   PostReaction,
 } from '../../src/storage/postReactions';
+import { getReactionSummary } from '../../src/storage/reactions';
 import {
   isPostReshared,
   addReshare,
@@ -1715,19 +1716,15 @@ function FeedPost({
 
       if (currentReaction === nextReaction) {
         await removePostReaction(post.id);
-        setReaction(null);
-        setShowReactions(false);
-        await onChanged();
-        return;
+      } else {
+        await setPostReaction(
+          post.id,
+          nextReaction,
+        );
       }
 
-      await setPostReaction(
-        post.id,
-        nextReaction,
-      );
-
-      setReaction(nextReaction);
       setShowReactions(false);
+      await syncReactionState();
       await onChanged();
     } catch (error) {
       console.error(
@@ -1735,6 +1732,28 @@ function FeedPost({
         error,
       );
     }
+  }
+
+  /**
+   * Re-read this post's reaction state from the single reaction ledger so the
+   * heart, the picker and the count always agree.
+   */
+  async function syncReactionState() {
+    const identity = await getIdentity();
+    const summary = await getReactionSummary(post.id);
+
+    setLikeCount(summary.total);
+
+    if (!identity) {
+      setLiked(false);
+      setReaction(null);
+      return;
+    }
+
+    const mine = await getPostReaction(post.id);
+
+    setReaction(mine);
+    setLiked(mine !== null);
   }
 
   async function toggleLike() {
@@ -1746,44 +1765,12 @@ function FeedPost({
       }
 
       if (liked) {
-        await unlikePost(
-          post.id,
-          identity.id,
-        );
-
-        setLiked(false);
-
-        const nextCount = Math.max(
-          0,
-          likeCount - 1,
-        );
-
-        setLikeCount(nextCount);
-
-        await updatePost({
-          ...post,
-          likes: nextCount,
-          updatedAt: new Date().toISOString(),
-        });
+        await unlikePost(post.id, identity.id);
       } else {
-        await likePost(
-          post.id,
-          identity.id,
-        );
-
-        setLiked(true);
-
-        const nextCount = likeCount + 1;
-
-        setLikeCount(nextCount);
-
-        await updatePost({
-          ...post,
-          likes: nextCount,
-          updatedAt: new Date().toISOString(),
-        });
+        await likePost(post.id, identity.id);
       }
 
+      await syncReactionState();
       await onChanged();
     } catch (error) {
       console.error(
@@ -1801,23 +1788,8 @@ function FeedPost({
         return;
       }
 
-      await likePost(
-        post.id,
-        identity.id,
-      );
-
-      setLiked(true);
-
-      const nextCount = likeCount + 1;
-
-      setLikeCount(nextCount);
-
-      await updatePost({
-        ...post,
-        likes: nextCount,
-        updatedAt: new Date().toISOString(),
-      });
-
+      await likePost(post.id, identity.id);
+      await syncReactionState();
       await onChanged();
     } catch (error) {
       console.error(

@@ -8,7 +8,7 @@ import type {
   AcademicValue,
   LearningOutcome,
 } from '../models/academic';
-import { getLocal, setLocal } from './localStore';
+import { getScopedLocal, setScopedLocal } from './accountScope';
 
 const STORAGE_KEY = 'hilink.academic.v1';
 const now = () => new Date().toISOString();
@@ -29,7 +29,7 @@ export const createDefaultStore = (): AcademicStore => ({
 });
 
 export async function getAcademicStore(): Promise<AcademicStore> {
-  const stored = await getLocal<AcademicStore>(STORAGE_KEY, createDefaultStore());
+  const stored = await getScopedLocal<AcademicStore>(STORAGE_KEY, createDefaultStore());
   if (!stored) return createDefaultStore();
   const defaults = createDefaultStore();
   return {
@@ -40,7 +40,7 @@ export async function getAcademicStore(): Promise<AcademicStore> {
 }
 
 export async function saveAcademicStore(store: AcademicStore): Promise<void> {
-  await setLocal(STORAGE_KEY, store);
+  await setScopedLocal(STORAGE_KEY, store);
 }
 
 async function updateStore(

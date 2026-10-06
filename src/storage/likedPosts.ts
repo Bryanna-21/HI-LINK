@@ -1,77 +1,57 @@
-import { getLocal, setLocal } from './localStore';
+import {
+  getUserReaction,
+  getUserReactions,
+  setUserReaction,
+} from './reactions';
 
-const LIKED_POST_IDS_KEY = 'liked_post_ids';
-const getLikedKey = (userId: string) =>
-  `${LIKED_POST_IDS_KEY}_${userId}`;
+/**
+ * "Liked" is the heart shortcut over the reaction ledger: a post counts as
+ * liked when the user has any reaction on it. Tapping the heart on an
+ * unreacted post records a `like`; tapping it again clears the reaction.
+ */
 
-export async function getLikedPostIds(
-  userId: string,
-): Promise<string[]> {
-  return getLocal<string[]>(
-    getLikedKey(userId),
-    [],
-  );
+export async function getLikedPostIds(userId: string): Promise<string[]> {
+  const records = await getUserReactions(userId);
+
+  return records.map((record) => record.postId);
 }
 
 export async function isPostLiked(
   postId: string,
   userId: string,
 ): Promise<boolean> {
-  const likedIds = await getLikedPostIds(userId);
-
-  return likedIds.includes(postId);
+  return (await getUserReaction(postId, userId)) !== null;
 }
 
 export async function likePost(
   postId: string,
   userId: string,
 ): Promise<void> {
-  const likedIds = await getLikedPostIds(userId);
-
-  if (likedIds.includes(postId)) {
+  if ((await getUserReaction(postId, userId)) !== null) {
     return;
   }
 
-  await setLocal(
-    getLikedKey(userId),
-    [postId, ...likedIds],
-  );
+  await setUserReaction(postId, userId, 'like');
 }
 
 export async function unlikePost(
   postId: string,
   userId: string,
 ): Promise<void> {
-  const likedIds = await getLikedPostIds(userId);
-
-  await setLocal(
-    getLikedKey(userId),
-    likedIds.filter(
-      (id) => id !== postId,
-    ),
-  );
+  await setUserReaction(postId, userId, null);
 }
 
 export async function toggleLikedPost(
   postId: string,
   userId: string,
 ): Promise<boolean> {
-  const liked = await isPostLiked(
-    postId,
-    userId,
-  );
+  if (await isPostLiked(postId, userId)) {
+    await unlikePost(postId, userId);
 
-  if (liked) {
-    await unlikePost(
-      postId,
-      userId,
-    );
     return false;
   }
 
-  await likePost(
-    postId,
-    userId,
-  );
+  await likePost(postId, userId);
+
   return true;
 }

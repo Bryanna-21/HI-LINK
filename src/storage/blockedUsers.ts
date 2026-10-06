@@ -1,9 +1,9 @@
-import { getLocal, setLocal } from './localStore';
+import { getScopedLocal, setScopedLocal } from './accountScope';
 
 const BLOCKED_USER_IDS_KEY = 'blocked_user_ids';
 
 export async function getBlockedUserIds(): Promise<string[]> {
-  return getLocal<string[]>(
+  return getScopedLocal<string[]>(
     BLOCKED_USER_IDS_KEY,
     [],
   );
@@ -26,7 +26,7 @@ export async function blockUser(
     return;
   }
 
-  await setLocal(
+  await setScopedLocal(
     BLOCKED_USER_IDS_KEY,
     [userId, ...blockedIds],
   );
@@ -37,7 +37,7 @@ export async function unblockUser(
 ): Promise<void> {
   const blockedIds = await getBlockedUserIds();
 
-  await setLocal(
+  await setScopedLocal(
     BLOCKED_USER_IDS_KEY,
     blockedIds.filter(
       (id) => id !== userId,
