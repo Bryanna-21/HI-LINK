@@ -6,6 +6,11 @@ import type {
   MembershipRole,
   Poll,
 } from '../models/campus';
+import type { Post, PostType } from '../models/post';
+import { addPost, deletePost, getPosts } from './posts';
+import { deleteCommentsForPost } from './comments';
+import { removeReactionsForPost } from './reactions';
+import { getIdentity } from './identity';
 import { createCollection } from './collection';
 import { getActiveUserId } from './accountScope';
 import { isInstitutionAdmin } from './roles';
@@ -17,6 +22,18 @@ import { generateId, nowIso } from '../utils/ids';
  * Posts, announcements, events and polls attach to a community by id; a
  * community is never just a filter over unrelated posts.
  */
+
+export const COMMUNITY_KINDS: { value: CommunityKind; label: string }[] = [
+  { value: 'school', label: 'School' },
+  { value: 'class', label: 'Class' },
+  { value: 'course', label: 'Course' },
+  { value: 'department', label: 'Department' },
+  { value: 'club', label: 'Club' },
+  { value: 'academic', label: 'Academic group' },
+  { value: 'study_group', label: 'Study group' },
+  { value: 'interest', label: 'Interest' },
+  { value: 'student_org', label: 'Student organization' },
+];
 
 const communities = createCollection<Community>('communities');
 const memberships = createCollection<CommunityMembership>('community_members');
@@ -515,4 +532,86 @@ export async function deletePoll(
 
   await assertManage(poll.communityId, actorId);
   await polls.remove(pollId);
+}
+
+/* ----------------------------- Community posts ---------------------------- */
+
+export async function getCommunityPosts(communityId: string): Promise<Post[]> {
+  const userId = await getActiveUserId();
+  const community = await communities.get(communityId);
+
+  if (!community) {
+    return [];
+  }
+
+  // Private communities do not leak their posts to non-members.
+  if (community.privacy !== 'open' && !(await isActiveMember(communityId, userId))) {
+    return [];
+  }
+
+  return (await getPosts())
+    .filter((post) => post.communityId === communityId)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export async function postToCommunity(
+  communityId: string,
+  input: { type: Extract<PostType, 'text' | 'question'>; text: string },
+): Promise<Post> {
+  const author = await getIdentity();
+
+  if (!author || !(await isActiveMember(communityId, author.id))) {
+    throw new Error('Join the community to post here.');
+  }
+
+  const text = input.text.trim();
+
+  if (!text) {
+    throw new Error('Write something before posting.');
+  }
+
+  const now = nowIso();
+
+  const post: Post = {
+    id: generateId('post'),
+    authorId: author.id,
+    authorName: author.name,
+    authorUsername: author.username,
+    authorAvatarUri: author.avatarUri,
+    type: input.type,
+    text,
+    communityId,
+    schoolId: author.schoolId,
+    schoolName: author.schoolName,
+    visibility: 'my_group',
+    likes: 0,
+    comments: 0,
+    shares: 0,
+    reshares: 0,
+    saves: 0,
+    commentsAllowed: true,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  await addPost(post);
+
+  return post;
+}
+
+/** Community administrators remove inappropriate posts in their community. */
+export async function removeCommunityPost(actorId: string, postId: string): Promise<void> {
+  const post = (await getPosts()).find((item) => item.id === postId);
+
+  if (!post || !post.communityId) {
+    return;
+  }
+
+  if (post.authorId !== actorId) {
+    await assertManage(post.communityId, actorId);
+  }
+
+  await deleteCommentsForPost(postId);
+  await removeReactionsForPost(postId);
+  await deletePost(postId);
 }
