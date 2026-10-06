@@ -1,10 +1,16 @@
 import { PostComment } from '../models/comment';
 import { getLocal, setLocal } from './localStore';
+import { getProfileMap, withLiveAuthor } from './liveProfiles';
 
 const COMMENTS_KEY = 'comments';
 
 export async function getComments(): Promise<PostComment[]> {
-  return getLocal<PostComment[]>(COMMENTS_KEY, []);
+  const [comments, profiles] = await Promise.all([
+    getLocal<PostComment[]>(COMMENTS_KEY, []),
+    getProfileMap(),
+  ]);
+
+  return comments.map((comment) => withLiveAuthor(comment, profiles));
 }
 
 export async function saveComments(

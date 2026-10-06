@@ -1086,8 +1086,21 @@ function MessageBubble({
                   ? styles.readReceiptRead
                   : styles.readReceiptDelivered,
               ]}
+              accessibilityLabel={
+                message.readAt
+                  ? 'Read'
+                  : message.deliveredAt
+                    ? 'Delivered'
+                    : 'Queued on this device'
+              }
             >
-              {message.readAt ? '✓✓' : '✓'}
+              {/* Only claim delivery when a transport recorded it. Messages
+                  sent today are stored locally and queued for later sync. */}
+              {message.readAt
+                ? '✓✓'
+                : message.deliveredAt
+                  ? '✓'
+                  : 'Queued'}
             </Text>
           ) : null}
         </View>
