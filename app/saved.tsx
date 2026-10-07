@@ -1,3 +1,4 @@
+import { getVisiblePosts } from '../src/storage/visibility';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
@@ -12,7 +13,6 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { ThemeColors, useTheme } from '../src/theme/ThemeProvider';
 import { Post } from '../src/models/post';
-import { getPosts } from '../src/storage/posts';
 import {
   getSavedPostIds,
   unsavePost,
@@ -28,7 +28,7 @@ export default function SavedScreen() {
 
   const loadSavedPosts = useCallback(async () => {
     const [allPosts, savedIds] = await Promise.all([
-      getPosts(),
+      getVisiblePosts(),
       getSavedPostIds(),
     ]);
 

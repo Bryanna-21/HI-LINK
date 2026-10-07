@@ -1,3 +1,4 @@
+import { getVisiblePosts } from '../../src/storage/visibility';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -13,7 +14,6 @@ import {
   useLocalSearchParams,
 } from 'expo-router';
 
-import { getPosts } from '../../src/storage/posts';
 import HiLinkVideoPlayer from '../../src/components/HiLinkVideoPlayer';
 import {
   ThemeColors,
@@ -33,7 +33,7 @@ export default function FullscreenVideoScreen() {
 
   const [post, setPost] =
     useState<Awaited<
-      ReturnType<typeof getPosts>
+      ReturnType<typeof getVisiblePosts>
     >[number] | null>(null);
 
   const [loading, setLoading] =
@@ -44,7 +44,7 @@ export default function FullscreenVideoScreen() {
 
     async function loadVideo() {
       try {
-        const posts = await getPosts();
+        const posts = await getVisiblePosts();
 
         const found = posts.find(
           (item) => item.id === postId,

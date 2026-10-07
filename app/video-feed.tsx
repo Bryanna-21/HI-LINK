@@ -1,3 +1,4 @@
+import { getVisiblePosts } from '../src/storage/visibility';
 import { useEffect, useState } from 'react';
 import {
   router,
@@ -17,7 +18,6 @@ import {
   useTheme,
 } from '../src/theme/ThemeProvider';
 import { Post } from '../src/models/post';
-import { getPosts } from '../src/storage/posts';
 
 export default function VideoFeedScreen() {
   const { colors } = useTheme();
@@ -41,7 +41,7 @@ export default function VideoFeedScreen() {
     async function load() {
       try {
         const allPosts =
-          await getPosts();
+          await getVisiblePosts();
 
         const requestedIds =
           params.ids

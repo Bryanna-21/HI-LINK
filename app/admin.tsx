@@ -53,8 +53,9 @@ export default function AdminScreen() {
     const myGrants = grants.filter((grant) => grant.userId === userId);
     const canGrantTeacher = me?.schoolId ? await can(userId, 'role.grant.teacher', { institutionId: me.schoolId }) : false;
     const canModerate = staff || myGrants.some((grant) => grant.role === 'school_admin');
+    const visibleGrants = grants.filter((grant) => staff || grant.institutionId === me?.schoolId);
 
-    return { userId, me, grants, users, institutions, pending, status, staff, myGrants, canGrantTeacher, canModerate };
+    return { visibleGrants, userId, me, grants, users, institutions, pending, status, staff, myGrants, canGrantTeacher, canModerate };
   });
 
   async function act(task: () => Promise<unknown>, success?: string) {
@@ -177,12 +178,10 @@ export default function AdminScreen() {
             {data.canModerate ? (
               <>
                 <SectionTitle>Granted roles</SectionTitle>
-                {data.grants.filter((grant) => grant.role !== 'super_admin' || data.staff).length === 0 ? (
+                {data.visibleGrants.length === 0 ? (
                   <EmptyState icon="shield-outline" title="No roles granted" />
                 ) : (
-                  data.grants
-                    .filter((grant) => data.staff || grant.institutionId === data.me?.schoolId)
-                    .map((grant) => (
+                  data.visibleGrants.map((grant) => (
                       <Card key={grant.id}>
                         <View style={styles.line}>
                           <View style={{ flex: 1 }}>
