@@ -343,8 +343,6 @@ export default function CreatePhotoScreen() {
 
           visibility: audience,
           communityId:
-            audience === 'my_group' ? communityId : undefined,
-        communityId:
           audience === 'my_group' ? communityId : undefined,
 
           commentsAllowed,
