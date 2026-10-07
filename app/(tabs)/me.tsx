@@ -1,3 +1,4 @@
+import { getVisiblePosts } from '../../src/storage/visibility';
 import { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
@@ -21,7 +22,7 @@ import {
 import { setOnboardingComplete } from '../../src/storage/onboarding';
 import { setSessionActive } from '../../src/storage/session';
 import { HiLinkUser } from '../../src/models/user';
-import { getPosts, getPostsByAuthor } from '../../src/storage/posts';
+import { getPostsByAuthor } from '../../src/storage/posts';
 import { Post } from '../../src/models/post';
 import { getReshares } from '../../src/storage/reshares';
 import { getLikedPostIds } from '../../src/storage/likedPosts';
@@ -76,7 +77,7 @@ export default function MeScreen() {
     setCoverImage(user?.coverUri ?? null);
 
     if (user) {
-      const allPosts = await getPosts();
+      const allPosts = await getVisiblePosts();
       const posts = allPosts.filter(
         (post) => post.authorId === user.id,
       );

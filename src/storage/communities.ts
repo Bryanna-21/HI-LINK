@@ -615,3 +615,11 @@ export async function removeCommunityPost(actorId: string, postId: string): Prom
   await removeReactionsForPost(postId);
   await deletePost(postId);
 }
+
+/** Communities the signed-in student is an active member of. */
+export async function getMyCommunityList(): Promise<Community[]> {
+  const mine = await getMyMemberships();
+  const ids = new Set(mine.map((item) => item.communityId));
+
+  return (await getCommunities()).filter((community) => ids.has(community.id));
+}

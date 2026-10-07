@@ -45,9 +45,9 @@ import {
 } from '../../src/storage/videoHistory';
 import {
   addPost,
-  getPosts,
   updatePost,
 } from '../../src/storage/posts';
+import { getVisiblePosts } from '../../src/storage/visibility';
 import { getCommentsByPost } from '../../src/storage/comments';
 import {
   isPostSaved,
@@ -167,7 +167,7 @@ export default function HomeScreen() {
   });
 
   const loadHomePosts = useCallback(async () => {
-    const result = await getPosts();
+    const result = await getVisiblePosts();
 
     setPosts(result);
   }, []);
@@ -457,7 +457,7 @@ export default function HomeScreen() {
 
 
 async function loadFeed() {
-  return getPosts();
+  return getVisiblePosts();
 }
 
 const Feed = forwardRef<
@@ -703,7 +703,7 @@ const Feed = forwardRef<
 
   const load = useCallback(async () => {
 
-    const result = await getPosts();
+    const result = await getVisiblePosts();
 
     const recentIds =
       await getRecentlyWatchedVideoIds(10);
