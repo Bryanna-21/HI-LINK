@@ -21,6 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { ThemeColors, useTheme } from '../../src/theme/ThemeProvider';
 import { PostComment } from '../../src/models/comment';
+import { ReportSheet, ReportTarget } from '../../src/components/ReportSheet';
 import { getIdentity } from '../../src/storage/identity';
 import {
   addComment,
@@ -33,6 +34,7 @@ import {
 } from '../../src/storage/posts';
 
 export default function CommentsScreen() {
+  const [reporting, setReporting] = useState<ReportTarget | null>(null);
   const { colors } = useTheme();
   const styles = createStyles(colors);
 
@@ -240,6 +242,14 @@ export default function CommentsScreen() {
               onDelete={() =>
                 handleDeleteComment(item)
               }
+              onReport={() =>
+                setReporting({
+                  targetType: 'comment',
+                  targetId: item.id,
+                  targetOwnerId: item.authorId,
+                  label: `comment by ${item.authorName}`,
+                })
+              }
               colors={colors}
               styles={styles}
             />
@@ -303,6 +313,7 @@ export default function CommentsScreen() {
           )}
         </Pressable>
       </View>
+      <ReportSheet target={reporting} onClose={() => setReporting(null)} />
     </KeyboardAvoidingView>
   );
 }
@@ -311,20 +322,25 @@ function CommentRow({
   comment,
   isMine,
   onDelete,
+  onReport,
   colors,
   styles,
 }: {
   comment: PostComment;
   isMine: boolean;
   onDelete: () => void;
+  onReport: () => void;
   colors: ThemeColors;
   styles: ReturnType<typeof createStyles>;
 }) {
   return (
     <Pressable
       style={styles.comment}
-      onLongPress={
-        isMine ? onDelete : undefined
+      onLongPress={isMine ? onDelete : onReport}
+      accessibilityHint={
+        isMine
+          ? 'Long press to delete your comment'
+          : 'Long press to report this comment'
       }
       delayLongPress={450}
     >
