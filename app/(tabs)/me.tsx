@@ -24,6 +24,7 @@ import { setSessionActive } from '../../src/storage/session';
 import { HiLinkUser } from '../../src/models/user';
 import { getPostsByAuthor } from '../../src/storage/posts';
 import { Post } from '../../src/models/post';
+import { getGrantsFor } from '../../src/storage/roles';
 import { getReshares } from '../../src/storage/reshares';
 import { getLikedPostIds } from '../../src/storage/likedPosts';
 import {
@@ -38,6 +39,7 @@ export default function MeScreen() {
   const { width } = useWindowDimensions();
 
   const [identity, setIdentity] = useState<HiLinkUser | null>(null);
+  const [hasAdminGrant, setHasAdminGrant] = useState(false);
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const [userPosts, setUserPosts] = useState<Post[]>([]);
@@ -68,6 +70,9 @@ export default function MeScreen() {
 
   async function loadProfile() {
     const user = await getIdentity();
+    setHasAdminGrant(
+      user ? (await getGrantsFor(user.id)).some((grant) => grant.role !== 'teacher') : false,
+    );
 
     // The signed-in identity is the only source of the photos. (Older builds
     // also kept a device-global copy, which leaked one account's photo into
@@ -494,6 +499,43 @@ export default function MeScreen() {
                 Edit Profile
               </Text>
             </Pressable>
+          </View>
+        </View>
+
+        <View
+          style={[
+            styles.contentSection,
+            { marginHorizontal: horizontalPadding, marginTop: 20 },
+          ]}
+        >
+          <View style={styles.shortcutGrid}>
+            {([
+              ['bookmark-outline', 'Saved', '/saved'],
+              ['school-outline', 'Academics', '/academics'],
+              ['calendar-outline', 'Timetable', '/timetable'],
+              ['people-circle-outline', 'Communities', '/communities'],
+              ['calendar-number-outline', 'Events', '/events'],
+              ['megaphone-outline', 'Announcements', '/announcements'],
+              ['briefcase-outline', 'Opportunities', '/opportunities'],
+              ['warning-outline', 'Emergency', '/emergency'],
+              ['document-text-outline', 'My posts', '/my-posts'],
+              ...(hasAdminGrant
+                ? ([['shield-checkmark-outline', 'Administration', '/admin']] as const)
+                : []),
+            ] as const).map(([icon, label, href]) => (
+              <Pressable
+                key={label}
+                style={styles.shortcut}
+                onPress={() => router.push(href as never)}
+                accessibilityRole="button"
+                accessibilityLabel={label}
+              >
+                <Ionicons name={icon as never} size={22} color={colors.text} />
+                <Text style={styles.shortcutText} numberOfLines={1}>
+                  {label}
+                </Text>
+              </Pressable>
+            ))}
           </View>
         </View>
 
@@ -1298,6 +1340,31 @@ function createStyles(colors: ThemeColors) {
 
   contentSection: {
     marginTop: 24,
+  },
+
+  shortcutGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+
+  shortcut: {
+    width: '31%',
+    flexGrow: 1,
+    minHeight: 64,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingHorizontal: 6,
+  },
+
+  shortcutText: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '600',
   },
 
   contentTabs: {
