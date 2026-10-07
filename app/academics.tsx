@@ -10,7 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../src/theme/ThemeProvider';
 import {
@@ -28,6 +28,17 @@ import {
   upsertAcademicValue,
   upsertLearningOutcome,
 } from '../src/storage/academic';
+import {
+  displayState,
+  getMyAssignments,
+  getMySubmissions,
+  isOverdue,
+  STATE_LABELS,
+} from '../src/storage/assignments';
+import { getActiveUserId } from '../src/storage/accountScope';
+import { getStaffScope } from '../src/storage/roles';
+import { getTimetable, nextClass, WEEKDAYS } from '../src/storage/timetable';
+import type { Assignment, Submission, TimetableEntry } from '../src/models/campus';
 import type {
   AcademicAssessment,
   AcademicCompetency,
@@ -69,7 +80,27 @@ export default function AcademicsScreen() {
   const [modalKind, setModalKind] = useState<ModalKind>(null);
   const [editing, setEditing] = useState<any>(null);
 
-  const load = useCallback(async () => setStore(await getAcademicStore()), []);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [timetable, setTimetable] = useState<TimetableEntry[]>([]);
+  const [canSetWork, setCanSetWork] = useState(false);
+
+  const load = useCallback(async () => {
+    const userId = await getActiveUserId();
+    const [nextStore, mine, subs, entries, scope] = await Promise.all([
+      getAcademicStore(),
+      getMyAssignments(),
+      getMySubmissions(),
+      getTimetable(),
+      getStaffScope(userId),
+    ]);
+
+    setStore(nextStore);
+    setAssignments(mine);
+    setSubmissions(subs);
+    setTimetable(entries);
+    setCanSetWork(scope.all || scope.institutionIds.length > 0);
+  }, []);
   useFocusEffect(useCallback(() => { void load(); }, [load]));
 
   const refresh = useCallback(async () => {
@@ -157,7 +188,16 @@ export default function AcademicsScreen() {
         </ScrollView>
 
         {tab === 'overview' ? (
-          <Overview store={store} colors={colors} onTab={setTab} />
+          <>
+            <Classwork
+              assignments={assignments}
+              submissions={submissions}
+              timetable={timetable}
+              canSetWork={canSetWork}
+              colors={colors}
+            />
+            <Overview store={store} colors={colors} onTab={setTab} />
+          </>
         ) : null}
 
         {tab === 'subjects' ? (
@@ -528,6 +568,86 @@ function SelectFromList({ label: selectLabel, value, options, onChange, colors }
 function MultiSelect({ label: selectLabel, selected, options, onToggle, colors }: any) {
   if (options.length === 0) return <Text style={[styles.helper, { color: colors.muted }]}>Add {selectLabel.toLowerCase()} first to link them here.</Text>;
   return <View style={styles.field}><Text style={[styles.fieldLabel, { color: colors.text }]}>{selectLabel}</Text><View style={styles.multiWrap}>{options.map((option: any) => <Pressable key={option.id} onPress={() => onToggle(option.id)} style={[styles.choice, { backgroundColor: selected.includes(option.id) ? colors.accent : colors.background, borderColor: selected.includes(option.id) ? colors.accent : colors.border }]}><Text style={[styles.choiceText, { color: selected.includes(option.id) ? '#fff' : colors.text }]}>{option.name}</Text></Pressable>)}</View></View>;
+}
+
+function Classwork({
+  assignments,
+  submissions,
+  timetable,
+  canSetWork,
+  colors,
+}: {
+  assignments: Assignment[];
+  submissions: Submission[];
+  timetable: TimetableEntry[];
+  canSetWork: boolean;
+  colors: ReturnType<typeof useTheme>['colors'];
+}) {
+  const upcoming = nextClass(timetable);
+  const open = assignments
+    .filter((assignment) => {
+      const submission = submissions.find((item) => item.assignmentId === assignment.id) ?? null;
+      const state = displayState(submission);
+
+      return state === 'not_started' || state === 'in_progress';
+    })
+    .slice(0, 5);
+
+  return (
+    <View style={[styles.contextCard, { backgroundColor: colors.card, borderColor: colors.border, flexDirection: 'column', alignItems: 'stretch' }]}>
+      <Text style={[styles.cardTitle, { color: colors.text }]}>Classwork</Text>
+
+      <Pressable onPress={() => router.push('/timetable')} accessibilityRole="button" accessibilityLabel="Open timetable">
+        <Text style={[styles.contextText, { color: colors.muted }]}>
+          {upcoming
+            ? `Next class: ${upcoming.entry.subject} · ${WEEKDAYS.find((day) => day.value === upcoming.entry.day)?.short ?? ''} ${upcoming.entry.start}`
+            : 'No lessons on your timetable yet. Tap to add them.'}
+        </Text>
+      </Pressable>
+
+      <View style={{ marginTop: 12, gap: 8 }}>
+        {open.length === 0 ? (
+          <Text style={[styles.contextText, { color: colors.muted }]}>
+            No open assignments.
+          </Text>
+        ) : (
+          open.map((assignment) => {
+            const submission = submissions.find((item) => item.assignmentId === assignment.id) ?? null;
+
+            return (
+              <Pressable
+                key={assignment.id}
+                onPress={() => router.push({ pathname: '/assignments/[id]', params: { id: assignment.id } })}
+                accessibilityRole="button"
+                accessibilityLabel={`Open assignment ${assignment.title}`}
+              >
+                <Text style={[styles.cardTitle, { color: colors.text, marginBottom: 0, fontSize: 14 }]} numberOfLines={1}>
+                  {assignment.title}
+                </Text>
+                <Text style={[styles.contextText, { color: colors.muted }]} numberOfLines={1}>
+                  {assignment.subjectName} · {STATE_LABELS[displayState(submission)]}
+                  {assignment.dueAt ? ` · due ${assignment.dueAt.slice(0, 10)}${isOverdue(assignment) ? ' (overdue)' : ''}` : ''}
+                </Text>
+              </Pressable>
+            );
+          })
+        )}
+      </View>
+
+      {canSetWork ? (
+        <Pressable
+          onPress={() => router.push('/assignments/create')}
+          style={{ marginTop: 14 }}
+          accessibilityRole="button"
+          accessibilityLabel="Set an assignment"
+        >
+          <Text style={[styles.cardTitle, { color: colors.accent, marginBottom: 0, fontSize: 14 }]}>
+            + Set an assignment
+          </Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
