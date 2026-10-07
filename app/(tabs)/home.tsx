@@ -69,6 +69,7 @@ import {
   likePost,
   unlikePost,
 } from '../../src/storage/likedPosts';
+import { getUnreadNotificationCount } from '../../src/storage/notifications';
 import { getFollowingIds } from '../../src/storage/follows';
 import { getKnownUsers } from '../../src/storage/users';
 
@@ -172,9 +173,12 @@ export default function HomeScreen() {
     setPosts(result);
   }, []);
 
+  const [unreadCount, setUnreadCount] = useState(0);
+
   useFocusEffect(
     useCallback(() => {
       void loadHomePosts();
+      void getUnreadNotificationCount().then(setUnreadCount);
     }, [loadHomePosts]),
   );
 
@@ -248,9 +252,29 @@ export default function HomeScreen() {
             </Text>
           </View>
 
-          <View style={styles.notification}>
-            <View style={styles.notificationDot} />
-          </View>
+          <Pressable
+            style={styles.notification}
+            onPress={() => router.push('/notifications')}
+            accessibilityRole="button"
+            accessibilityLabel={
+              unreadCount > 0
+                ? `Notifications, ${unreadCount} unread`
+                : 'Notifications'
+            }
+          >
+            <Ionicons
+              name="notifications-outline"
+              size={22}
+              color={colors.text}
+            />
+            {unreadCount > 0 ? (
+              <View style={styles.notificationCount}>
+                <Text style={styles.notificationCountText}>
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </Text>
+              </View>
+            ) : null}
+          </Pressable>
         </View>
 
         {/* HOME NAVIGATION */}
@@ -3698,11 +3722,23 @@ function createStyles(colors: ThemeColors) {
     justifyContent: 'center',
   },
 
-  notificationDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 5,
+  notificationCount: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    paddingHorizontal: 5,
     backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  notificationCountText: {
+    color: colors.background,
+    fontSize: 11,
+    fontWeight: '800',
   },
 
   greeting: {
