@@ -497,6 +497,22 @@ export default function ProfileScreen() {
               </Text>
             </Pressable>
 
+            <Pressable
+              style={styles.resharedButton}
+              onPress={() =>
+                router.push({
+                  pathname: '/portfolio',
+                  params: { userId: user.id },
+                })
+              }
+              accessibilityRole="button"
+              accessibilityLabel="View portfolio"
+            >
+              <Ionicons name="briefcase-outline" size={18} color={colors.accent} />
+
+              <Text style={styles.resharedButtonText}>Portfolio</Text>
+            </Pressable>
+
             {connection === 'request_received' && user.id !== identityId ? (
               <>
                 <Pressable

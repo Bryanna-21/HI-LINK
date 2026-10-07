@@ -516,9 +516,11 @@ export default function MeScreen() {
               ['people-circle-outline', 'Communities', '/communities'],
               ['calendar-number-outline', 'Events', '/events'],
               ['megaphone-outline', 'Announcements', '/announcements'],
-              ['briefcase-outline', 'Opportunities', '/opportunities'],
+              ['business-outline', 'Opportunities', '/opportunities'],
               ['warning-outline', 'Emergency', '/emergency'],
               ['document-text-outline', 'My posts', '/my-posts'],
+              ['briefcase-outline', 'Portfolio', '/portfolio'],
+              ['person-add-outline', 'Follow requests', '/follow-requests'],
               ...(hasAdminGrant
                 ? ([['shield-checkmark-outline', 'Administration', '/admin']] as const)
                 : []),
