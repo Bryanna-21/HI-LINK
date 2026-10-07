@@ -41,3 +41,16 @@ export async function clearLocalData() {
     await AsyncStorage.multiRemove(hiLinkKeys);
   }
 }
+
+/** Removes every per-account (`base@userId`) record that belongs to one account. */
+export async function clearAccountData(userId: string) {
+  const keys = await AsyncStorage.getAllKeys();
+
+  const owned = keys.filter(
+    (key) => key.startsWith(PREFIX) && key.endsWith(`@${userId}`),
+  );
+
+  if (owned.length > 0) {
+    await AsyncStorage.multiRemove(owned);
+  }
+}

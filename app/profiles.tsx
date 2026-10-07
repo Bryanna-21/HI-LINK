@@ -2,10 +2,12 @@ import { useCallback, useState } from 'react';
 import {
   Alert,
   Image,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
@@ -25,6 +27,12 @@ import {
 import { setSessionActive } from '../src/storage/session';
 import { setOnboardingComplete } from '../src/storage/onboarding';
 import { HiLinkUser } from '../src/models/user';
+import {
+  hasPin,
+  removePin,
+  verifyPin,
+} from '../src/storage/accountSecurity';
+import { clearAccountData } from '../src/storage/localStore';
 
 export default function ProfilesScreen() {
   const { colors } = useTheme();
@@ -54,6 +62,46 @@ export default function ProfilesScreen() {
     }, [loadProfiles]),
   );
 
+  const [pinTarget, setPinTarget] = useState<HiLinkUser | null>(null);
+  const [pinValue, setPinValue] = useState('');
+  const [pinError, setPinError] = useState<string | null>(null);
+
+  async function requestSwitch(user: HiLinkUser) {
+    if (await hasPin(user.id)) {
+      setPinValue('');
+      setPinError(null);
+      setPinTarget(user);
+
+      return;
+    }
+
+    await switchProfile(user);
+  }
+
+  async function submitPin() {
+    if (!pinTarget) {
+      return;
+    }
+
+    const result = await verifyPin(pinTarget.id, pinValue);
+
+    if (result.ok) {
+      const target = pinTarget;
+
+      setPinTarget(null);
+      await switchProfile(target);
+
+      return;
+    }
+
+    setPinValue('');
+    setPinError(
+      result.reason === 'locked'
+        ? `Too many attempts. Try again in ${result.retryInSeconds}s.`
+        : `Wrong PIN. ${result.attemptsLeft} attempt${result.attemptsLeft === 1 ? '' : 's'} left before a lockout.`,
+    );
+  }
+
   async function switchProfile(user: HiLinkUser) {
     await saveIdentity(user);
     await setSessionActive(true);
@@ -71,7 +119,7 @@ export default function ProfilesScreen() {
 
     Alert.alert(
       'Delete profile',
-      `Delete ${user.name}'s saved HI-LINK profile from this device? This cannot be undone.`,
+      `Delete ${user.name}'s saved HI-LINK profile and private data (saved posts, notifications, academic records) from this device? Posts already shared stay visible. This cannot be undone.`,
       [
         {
           text: 'Cancel',
@@ -87,6 +135,8 @@ export default function ProfilesScreen() {
             );
 
             await saveUsers(nextUsers);
+            await removePin(user.id);
+            await clearAccountData(user.id);
 
             if (isActive) {
               await clearIdentity();
@@ -247,7 +297,7 @@ export default function ProfilesScreen() {
                     onPress={() =>
                       isActive
                         ? undefined
-                        : switchProfile(user)
+                        : requestSwitch(user)
                     }
                     disabled={isActive}
                   >
@@ -291,7 +341,7 @@ export default function ProfilesScreen() {
                   ) : (
                     <Pressable
                       onPress={() =>
-                        switchProfile(user)
+                        requestSwitch(user)
                       }
                       accessibilityRole="button"
                       accessibilityLabel={`Switch to ${user.name}`}
@@ -364,6 +414,44 @@ export default function ProfilesScreen() {
           </Text>
         </View>
       </ScrollView>
+      <Modal
+        visible={pinTarget !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPinTarget(null)}
+      >
+        <View style={styles.pinBackdrop}>
+          <View style={styles.pinCard}>
+            <Text style={styles.pinTitle}>
+              Enter PIN for {pinTarget?.name}
+            </Text>
+            <TextInput
+              style={styles.pinInput}
+              value={pinValue}
+              onChangeText={setPinValue}
+              secureTextEntry
+              keyboardType="number-pad"
+              maxLength={8}
+              autoFocus
+              placeholder="PIN"
+              placeholderTextColor={colors.muted}
+              accessibilityLabel="Profile PIN"
+              onSubmitEditing={submitPin}
+            />
+            {pinError ? (
+              <Text style={styles.pinError}>{pinError}</Text>
+            ) : null}
+            <View style={styles.pinActions}>
+              <Pressable onPress={() => setPinTarget(null)} accessibilityRole="button">
+                <Text style={styles.switchText}>Cancel</Text>
+              </Pressable>
+              <Pressable onPress={submitPin} accessibilityRole="button">
+                <Text style={styles.switchText}>Unlock</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -566,7 +654,54 @@ const createStyles = (colors: ThemeColors) =>
       fontWeight: '700',
     },
 
-    switchText: {
+    pinBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+
+  pinCard: {
+    width: '100%',
+    borderRadius: 18,
+    padding: 20,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+
+  pinTitle: {
+    color: colors.text,
+    fontSize: 17,
+    fontWeight: '700',
+    marginBottom: 14,
+  },
+
+  pinInput: {
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    color: colors.text,
+    paddingHorizontal: 14,
+    fontSize: 18,
+  },
+
+  pinError: {
+    color: colors.text,
+    marginTop: 10,
+    fontSize: 13,
+  },
+
+  pinActions: {
+    marginTop: 16,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 24,
+  },
+
+  switchText: {
       color: colors.accent,
       fontSize: 13,
       fontWeight: '700',
