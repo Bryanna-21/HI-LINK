@@ -793,12 +793,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
 
   videoTouch: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 2,
   },
 
   pauseOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems:
       'center',
     justifyContent:

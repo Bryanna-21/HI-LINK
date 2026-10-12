@@ -3270,7 +3270,7 @@ function createStyles(colors: ThemeColors) {
   },
 
   postMenuBackdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.48)',
   },
 
@@ -3406,7 +3406,7 @@ function createStyles(colors: ThemeColors) {
   },
 
   videoPlayOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
   },

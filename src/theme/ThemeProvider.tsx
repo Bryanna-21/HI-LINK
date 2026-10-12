@@ -90,7 +90,7 @@ const ThemeContext =
 
 function resolveThemeMode(
   mode: ThemeMode,
-  systemScheme: ColorSchemeName,
+  systemScheme: ColorSchemeName | null | undefined,
 ): 'light' | 'dark' {
   if (mode === 'light') {
     return 'light';
@@ -113,7 +113,7 @@ export function ThemeProvider({
   );
 
   const [systemScheme, setSystemScheme] =
-    useState<ColorSchemeName>(
+    useState<ColorSchemeName | null | undefined>(
       Appearance.getColorScheme(),
     );
 
