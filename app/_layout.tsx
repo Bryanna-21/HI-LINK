@@ -20,11 +20,13 @@ function RootNavigator() {
     // Register known accounts with the campus layer, then surface any due
     // reminders. Reminders also refresh whenever the app returns to the
     // foreground (there is no background service to wake it).
-    void bootstrapCampus().then(syncReminders);
+    bootstrapCampus()
+      .then(syncReminders)
+      .catch((error) => console.warn('Campus startup failed:', error));
 
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
-        void syncReminders();
+        syncReminders().catch((error) => console.warn('Reminder sync failed:', error));
       }
     });
 

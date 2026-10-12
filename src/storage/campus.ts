@@ -47,7 +47,7 @@ export async function registerUserInCampus(user: HiLinkUser): Promise<void> {
 
 /** Idempotent: safe to run on every launch. Oldest accounts register first. */
 export async function bootstrapCampus(): Promise<void> {
-  const users = (await getUsers()).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const users = (await getUsers()).sort((a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''));
 
   for (const user of users) {
     await registerUserInCampus(user);

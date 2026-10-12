@@ -28,8 +28,8 @@ Legend: **Local** = works end to end on-device · **Needs backend** = cannot be 
 ## Messaging (NexChat)
 | Item | Status | Notes |
 |---|---|---|
-| Conversations and messages | Partial | Stored locally. Receipts say "Queued" unless delivered/read was recorded. No transport exists in this repo, so nothing is delivered to other devices. |
-| Message notifications, calls | Needs backend | |
+| Conversations and messages | Partial | Stored locally. A message to someone who has a profile on THIS device is delivered to their inbox (with an unread count and a notification) and shows ✓; ✓✓ appears only when they open it. Messages to anyone else stay "Queued": there is no network transport, so phones cannot message each other yet. |
+| Messaging between different phones, push notifications, voice/video calls | Needs backend | Calls only record an attempt; no one is called. |
 
 ## Campus
 | Item | Status | Notes |
