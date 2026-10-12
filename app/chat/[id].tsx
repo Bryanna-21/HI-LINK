@@ -6,6 +6,7 @@ import {
 } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -147,6 +148,7 @@ export default function ChatScreen() {
 
         await markConversationRead(
           conversationId,
+          currentIdentity?.id,
         );
 
         const chatMessages =
@@ -285,18 +287,18 @@ export default function ChatScreen() {
         createdAt: now,
       };
 
-      await addMessage(message);
+      const stored = await addMessage(message);
 
       setMessages((current) => [
         ...current,
-        message,
+        stored,
       ]);
 
       setConversation((current) =>
         current
           ? {
               ...current,
-              lastMessage: message,
+              lastMessage: stored,
               updatedAt: now,
             }
           : current,
@@ -308,6 +310,12 @@ export default function ChatScreen() {
         'Send attachment failed:',
         error,
       );
+      Alert.alert(
+        'Not sent',
+        error instanceof Error
+          ? error.message
+          : 'The attachment could not be sent.',
+      );
     } finally {
       setSending(false);
     }
@@ -318,6 +326,10 @@ export default function ChatScreen() {
       await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permission.granted) {
+      Alert.alert(
+        'Permission needed',
+        'Allow access in your phone settings to use this.',
+      );
       return;
     }
 
@@ -351,6 +363,10 @@ export default function ChatScreen() {
       await ImagePicker.requestCameraPermissionsAsync();
 
     if (!permission.granted) {
+      Alert.alert(
+        'Permission needed',
+        'Allow access in your phone settings to use this.',
+      );
       return;
     }
 
@@ -384,6 +400,10 @@ export default function ChatScreen() {
       await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permission.granted) {
+      Alert.alert(
+        'Permission needed',
+        'Allow access in your phone settings to use this.',
+      );
       return;
     }
 
@@ -445,6 +465,10 @@ export default function ChatScreen() {
         await AudioModule.requestRecordingPermissionsAsync();
 
       if (!permission.granted) {
+        Alert.alert(
+          'Permission needed',
+          'Allow access in your phone settings to use this.',
+        );
         return;
       }
 
@@ -549,11 +573,11 @@ export default function ChatScreen() {
         createdAt: now,
       };
 
-      await addMessage(message);
+      const stored = await addMessage(message);
 
       setMessages((current) => [
         ...current,
-        message,
+        stored,
       ]);
 
       setInput('');
@@ -562,7 +586,7 @@ export default function ChatScreen() {
         current
           ? {
               ...current,
-              lastMessage: message,
+              lastMessage: stored,
               updatedAt: now,
             }
           : current,
@@ -571,6 +595,12 @@ export default function ChatScreen() {
       console.error(
         'Send message failed:',
         error,
+      );
+      Alert.alert(
+        'Not sent',
+        error instanceof Error
+          ? error.message
+          : 'The message could not be sent.',
       );
     } finally {
       setSending(false);
