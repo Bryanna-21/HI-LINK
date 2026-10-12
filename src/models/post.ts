@@ -39,6 +39,12 @@ export interface Post {
   form?: string;
   stream?: string;
 
+  /**
+   * Set when the post belongs to a community. Required for the existing
+   * `my_group` visibility: only active members of that community can see it.
+   */
+  communityId?: string;
+
   subject?: string;
   resourceType?: string;
 

@@ -1,4 +1,4 @@
-import { getLocal, setLocal } from './localStore';
+import { getScopedLocal, setScopedLocal } from './accountScope';
 
 export type VideoDisplayMode = 'fit' | 'fill';
 
@@ -15,7 +15,7 @@ export const DEFAULT_VIDEO_SETTINGS: VideoSettings = {
 const VIDEO_SETTINGS_KEY = 'video-settings';
 
 export async function getVideoSettings(): Promise<VideoSettings> {
-  return getLocal<VideoSettings>(
+  return getScopedLocal<VideoSettings>(
     VIDEO_SETTINGS_KEY,
     DEFAULT_VIDEO_SETTINGS,
   );
@@ -24,5 +24,5 @@ export async function getVideoSettings(): Promise<VideoSettings> {
 export async function saveVideoSettings(
   settings: VideoSettings,
 ): Promise<void> {
-  await setLocal(VIDEO_SETTINGS_KEY, settings);
+  await setScopedLocal(VIDEO_SETTINGS_KEY, settings);
 }

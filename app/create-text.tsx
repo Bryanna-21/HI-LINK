@@ -1,9 +1,9 @@
+import { CommunityPicker } from '../src/components/CommunityPicker';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Switch,
@@ -11,6 +11,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 
@@ -70,6 +71,11 @@ export default function CreateTextScreen() {
 
   const [visibility, setVisibility] =
     useState<PostVisibility>('everyone');
+
+  const [communityId, setCommunityId] =
+    useState<string | undefined>(undefined);
+  const [pickerOpen, setPickerOpen] =
+    useState(false);
 
   const [commentsAllowed, setCommentsAllowed] =
     useState(true);
@@ -133,6 +139,7 @@ export default function CreateTextScreen() {
         post.resourceType || 'None',
       );
       setVisibility(post.visibility);
+      setCommunityId(post.communityId);
       setCommentsAllowed(
         post.commentsAllowed !== false,
       );
@@ -163,13 +170,11 @@ export default function CreateTextScreen() {
     next: PostVisibility,
   ) {
     if (next === 'my_group') {
-      Alert.alert(
-        'Groups coming next',
-        'Group-based audiences will be enabled when Hi-Link groups are connected.',
-      );
+      setPickerOpen(true);
       return;
     }
 
+    setCommunityId(undefined);
     setVisibility(next);
   }
 
@@ -192,6 +197,14 @@ export default function CreateTextScreen() {
       Alert.alert(
         'Text required',
         'Write something before continuing.',
+      );
+      return;
+    }
+
+    if (visibility === 'my_group' && !communityId) {
+      Alert.alert(
+        'Choose a group',
+        'Pick the community this post is for.',
       );
       return;
     }
@@ -241,6 +254,8 @@ export default function CreateTextScreen() {
               ? undefined
               : resourceType,
           visibility,
+          communityId:
+            visibility === 'my_group' ? communityId : undefined,
           tags:
             tags.length > 0
               ? tags
@@ -284,6 +299,10 @@ export default function CreateTextScreen() {
               : resourceType,
 
           visibility,
+
+          communityId:
+
+            visibility === 'my_group' ? communityId : undefined,
 
           tags:
             tags.length > 0
@@ -547,6 +566,15 @@ export default function CreateTextScreen() {
           )}
         </Pressable>
       </ScrollView>
+      <CommunityPicker
+        visible={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onPick={(id) => {
+          setCommunityId(id);
+          setVisibility('my_group');
+          setPickerOpen(false);
+        }}
+      />
     </SafeAreaView>
   );
 }

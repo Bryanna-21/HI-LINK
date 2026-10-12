@@ -1,4 +1,5 @@
 import { HiLinkUser } from '../../src/models/user';
+import { usePauseWhenAway } from '../../src/hooks/usePauseWhenAway';
 import {
   forwardRef,
   useCallback,
@@ -14,7 +15,6 @@ import {
   Modal,
   Pressable,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   Share,
   StyleSheet,
@@ -22,6 +22,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import * as MediaLibrary from 'expo-media-library';
@@ -45,9 +46,9 @@ import {
 } from '../../src/storage/videoHistory';
 import {
   addPost,
-  getPosts,
   updatePost,
 } from '../../src/storage/posts';
+import { getVisiblePosts } from '../../src/storage/visibility';
 import { getCommentsByPost } from '../../src/storage/comments';
 import {
   isPostSaved,
@@ -59,6 +60,7 @@ import {
   setPostReaction,
   PostReaction,
 } from '../../src/storage/postReactions';
+import { getReactionSummary } from '../../src/storage/reactions';
 import {
   isPostReshared,
   addReshare,
@@ -68,6 +70,7 @@ import {
   likePost,
   unlikePost,
 } from '../../src/storage/likedPosts';
+import { getUnreadNotificationCount } from '../../src/storage/notifications';
 import { getFollowingIds } from '../../src/storage/follows';
 import { getKnownUsers } from '../../src/storage/users';
 
@@ -166,14 +169,17 @@ export default function HomeScreen() {
   });
 
   const loadHomePosts = useCallback(async () => {
-    const result = await getPosts();
+    const result = await getVisiblePosts();
 
     setPosts(result);
   }, []);
 
+  const [unreadCount, setUnreadCount] = useState(0);
+
   useFocusEffect(
     useCallback(() => {
       void loadHomePosts();
+      void getUnreadNotificationCount().then(setUnreadCount);
     }, [loadHomePosts]),
   );
 
@@ -247,9 +253,29 @@ export default function HomeScreen() {
             </Text>
           </View>
 
-          <View style={styles.notification}>
-            <View style={styles.notificationDot} />
-          </View>
+          <Pressable
+            style={styles.notification}
+            onPress={() => router.push('/notifications')}
+            accessibilityRole="button"
+            accessibilityLabel={
+              unreadCount > 0
+                ? `Notifications, ${unreadCount} unread`
+                : 'Notifications'
+            }
+          >
+            <Ionicons
+              name="notifications-outline"
+              size={22}
+              color={colors.text}
+            />
+            {unreadCount > 0 ? (
+              <View style={styles.notificationCount}>
+                <Text style={styles.notificationCountText}>
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </Text>
+              </View>
+            ) : null}
+          </Pressable>
         </View>
 
         {/* HOME NAVIGATION */}
@@ -456,7 +482,7 @@ export default function HomeScreen() {
 
 
 async function loadFeed() {
-  return getPosts();
+  return getVisiblePosts();
 }
 
 const Feed = forwardRef<
@@ -702,7 +728,7 @@ const Feed = forwardRef<
 
   const load = useCallback(async () => {
 
-    const result = await getPosts();
+    const result = await getVisiblePosts();
 
     const recentIds =
       await getRecentlyWatchedVideoIds(10);
@@ -1164,6 +1190,8 @@ function FeedVideo({
       videoPlayer.loop = false;
     },
   );
+
+  usePauseWhenAway(player);
 
   function videoLog(
     event: string,
@@ -1715,19 +1743,15 @@ function FeedPost({
 
       if (currentReaction === nextReaction) {
         await removePostReaction(post.id);
-        setReaction(null);
-        setShowReactions(false);
-        await onChanged();
-        return;
+      } else {
+        await setPostReaction(
+          post.id,
+          nextReaction,
+        );
       }
 
-      await setPostReaction(
-        post.id,
-        nextReaction,
-      );
-
-      setReaction(nextReaction);
       setShowReactions(false);
+      await syncReactionState();
       await onChanged();
     } catch (error) {
       console.error(
@@ -1735,6 +1759,28 @@ function FeedPost({
         error,
       );
     }
+  }
+
+  /**
+   * Re-read this post's reaction state from the single reaction ledger so the
+   * heart, the picker and the count always agree.
+   */
+  async function syncReactionState() {
+    const identity = await getIdentity();
+    const summary = await getReactionSummary(post.id);
+
+    setLikeCount(summary.total);
+
+    if (!identity) {
+      setLiked(false);
+      setReaction(null);
+      return;
+    }
+
+    const mine = await getPostReaction(post.id);
+
+    setReaction(mine);
+    setLiked(mine !== null);
   }
 
   async function toggleLike() {
@@ -1746,44 +1792,12 @@ function FeedPost({
       }
 
       if (liked) {
-        await unlikePost(
-          post.id,
-          identity.id,
-        );
-
-        setLiked(false);
-
-        const nextCount = Math.max(
-          0,
-          likeCount - 1,
-        );
-
-        setLikeCount(nextCount);
-
-        await updatePost({
-          ...post,
-          likes: nextCount,
-          updatedAt: new Date().toISOString(),
-        });
+        await unlikePost(post.id, identity.id);
       } else {
-        await likePost(
-          post.id,
-          identity.id,
-        );
-
-        setLiked(true);
-
-        const nextCount = likeCount + 1;
-
-        setLikeCount(nextCount);
-
-        await updatePost({
-          ...post,
-          likes: nextCount,
-          updatedAt: new Date().toISOString(),
-        });
+        await likePost(post.id, identity.id);
       }
 
+      await syncReactionState();
       await onChanged();
     } catch (error) {
       console.error(
@@ -1801,23 +1815,8 @@ function FeedPost({
         return;
       }
 
-      await likePost(
-        post.id,
-        identity.id,
-      );
-
-      setLiked(true);
-
-      const nextCount = likeCount + 1;
-
-      setLikeCount(nextCount);
-
-      await updatePost({
-        ...post,
-        likes: nextCount,
-        updatedAt: new Date().toISOString(),
-      });
-
+      await likePost(post.id, identity.id);
+      await syncReactionState();
       await onChanged();
     } catch (error) {
       console.error(
@@ -3271,7 +3270,7 @@ function createStyles(colors: ThemeColors) {
   },
 
   postMenuBackdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.48)',
   },
 
@@ -3407,7 +3406,7 @@ function createStyles(colors: ThemeColors) {
   },
 
   videoPlayOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -3726,11 +3725,23 @@ function createStyles(colors: ThemeColors) {
     justifyContent: 'center',
   },
 
-  notificationDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 5,
+  notificationCount: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    paddingHorizontal: 5,
     backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  notificationCountText: {
+    color: colors.background,
+    fontSize: 11,
+    fontWeight: '800',
   },
 
   greeting: {

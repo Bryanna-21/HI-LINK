@@ -1,95 +1,79 @@
-import { getLocal, setLocal } from './localStore';
+import {
+  getActiveUserId,
+} from './accountScope';
+import {
+  getUserReaction,
+  getUserReactions,
+  PostReaction,
+  setUserReaction,
+} from './reactions';
 
-export type PostReaction =
-  | 'like'
-  | 'love'
-  | 'laugh'
-  | 'wow'
-  | 'sad'
-  | 'angry';
+/**
+ * Compatibility facade over the single reaction ledger (`reactions.ts`).
+ *
+ * Screens written against the old per-device store keep working, but every
+ * call now reads/writes the account-scoped ledger so counts and "my
+ * reaction" can never disagree between the feed, reels and reactions tab.
+ */
+
+export type { PostReaction } from './reactions';
 
 export interface StoredPostReaction {
   postId: string;
   reaction: PostReaction;
 }
 
-const REACTIONS_KEY = 'post_reactions';
+export async function getPostReactions(): Promise<StoredPostReaction[]> {
+  const records = await getUserReactions();
 
-export async function getPostReactions(): Promise<
-  StoredPostReaction[]
-> {
-  return getLocal<StoredPostReaction[]>(
-    REACTIONS_KEY,
-    [],
-  );
+  return records.map((record) => ({
+    postId: record.postId,
+    reaction: record.reaction,
+  }));
 }
 
 export async function getPostReaction(
   postId: string,
 ): Promise<PostReaction | null> {
-  const reactions =
-    await getPostReactions();
-
-  const existing = reactions.find(
-    (item) => item.postId === postId,
-  );
-
-  return existing?.reaction ?? null;
+  return getUserReaction(postId);
 }
 
 export async function setPostReaction(
   postId: string,
   reaction: PostReaction,
 ): Promise<void> {
-  const reactions =
-    await getPostReactions();
+  const userId = await getActiveUserId();
 
-  const filtered = reactions.filter(
-    (item) => item.postId !== postId,
-  );
+  if (!userId) {
+    return;
+  }
 
-  await setLocal(
-    REACTIONS_KEY,
-    [
-      ...filtered,
-      {
-        postId,
-        reaction,
-      },
-    ],
-  );
+  await setUserReaction(postId, userId, reaction);
 }
 
-export async function removePostReaction(
-  postId: string,
-): Promise<void> {
-  const reactions =
-    await getPostReactions();
+export async function removePostReaction(postId: string): Promise<void> {
+  const userId = await getActiveUserId();
 
-  await setLocal(
-    REACTIONS_KEY,
-    reactions.filter(
-      (item) => item.postId !== postId,
-    ),
-  );
+  if (!userId) {
+    return;
+  }
+
+  await setUserReaction(postId, userId, null);
 }
 
 export async function togglePostReaction(
   postId: string,
   reaction: PostReaction,
 ): Promise<PostReaction | null> {
-  const current =
-    await getPostReaction(postId);
+  const current = await getPostReaction(postId);
 
   if (current === reaction) {
     await removePostReaction(postId);
+
     return null;
   }
 
-  await setPostReaction(
-    postId,
-    reaction,
-  );
+  await setPostReaction(postId, reaction);
 
   return reaction;
 }

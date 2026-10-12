@@ -1,3 +1,4 @@
+import { getVisiblePosts } from '../../src/storage/visibility';
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -14,7 +15,6 @@ import {
   PostReaction,
   StoredPostReaction,
 } from '../../src/storage/postReactions';
-import { getPosts } from '../../src/storage/posts';
 import { Post } from '../../src/models/post';
 import {
   ThemeColors,
@@ -88,7 +88,7 @@ export default function ReactionsScreen() {
       const [storedReactions, posts] =
         await Promise.all([
           getPostReactions(),
-          getPosts(),
+          getVisiblePosts(),
         ]);
 
       const postMap = new Map(

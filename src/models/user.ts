@@ -46,6 +46,15 @@ export interface HiLinkUser {
   avatarUri?: string;
   coverUri?: string;
 
+  /**
+   * Private accounts approve followers. Everything else is open-follow.
+   * Defaults to public when absent so existing profiles are unchanged.
+   */
+  isPrivate?: boolean;
+
+  /** Skills shown on the profile portfolio (projects etc. live in portfolio.ts). */
+  skills?: string[];
+
   createdAt: string;
   updatedAt: string;
 }
