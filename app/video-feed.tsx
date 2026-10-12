@@ -6,11 +6,11 @@ import {
 } from 'expo-router';
 import {
   ActivityIndicator,
-  SafeAreaView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import HiLinkVideoFeed from '../src/components/HiLinkVideoFeed';
 import {

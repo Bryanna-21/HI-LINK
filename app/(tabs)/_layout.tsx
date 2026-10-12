@@ -3,7 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   BottomTabBar,
   BottomTabBarProps,
-} from '@react-navigation/bottom-tabs';
+} from 'expo-router/js-tabs';
 import {
   Pressable,
   StyleSheet,
