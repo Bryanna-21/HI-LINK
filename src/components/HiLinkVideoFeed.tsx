@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { usePauseWhenAway } from '../hooks/usePauseWhenAway';
 import {
   Dimensions,
   FlatList,
@@ -88,6 +89,8 @@ function VideoFeedItem({
       videoPlayer.loop = true;
     },
   );
+
+  usePauseWhenAway(player);
 
   const lastTapRef =
     useRef<number | null>(null);

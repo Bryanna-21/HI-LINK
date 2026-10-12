@@ -1,4 +1,5 @@
 import { HiLinkUser } from '../../src/models/user';
+import { usePauseWhenAway } from '../../src/hooks/usePauseWhenAway';
 import {
   forwardRef,
   useCallback,
@@ -1189,6 +1190,8 @@ function FeedVideo({
       videoPlayer.loop = false;
     },
   );
+
+  usePauseWhenAway(player);
 
   function videoLog(
     event: string,

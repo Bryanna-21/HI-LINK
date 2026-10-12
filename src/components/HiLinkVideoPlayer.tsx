@@ -3,6 +3,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { usePauseWhenAway } from '../hooks/usePauseWhenAway';
 import {
   Pressable,
   StyleSheet,
@@ -75,6 +76,8 @@ export default function HiLinkVideoPlayer({
       }
     },
   );
+
+  usePauseWhenAway(player);
 
   const [playing, setPlaying] =
     useState(autoPlay);
