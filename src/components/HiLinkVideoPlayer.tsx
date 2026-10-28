@@ -3,6 +3,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { usePauseWhenAway } from '../hooks/usePauseWhenAway';
 import {
   Pressable,
   StyleSheet,
@@ -75,6 +76,8 @@ export default function HiLinkVideoPlayer({
       }
     },
   );
+
+  usePauseWhenAway(player);
 
   const [playing, setPlaying] =
     useState(autoPlay);
@@ -398,12 +401,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
 
   touchSurface: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 2,
   },
 
   playOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 3,

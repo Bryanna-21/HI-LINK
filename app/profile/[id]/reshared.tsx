@@ -1,3 +1,4 @@
+import { getVisiblePosts } from '../../../src/storage/visibility';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
@@ -19,7 +20,6 @@ import { ThemeColors, useTheme } from '../../../src/theme/ThemeProvider';
 import { Post } from '../../../src/models/post';
 import { HiLinkUser } from '../../../src/models/user';
 import { getIdentity } from '../../../src/storage/identity';
-import { getPosts } from '../../../src/storage/posts';
 import { getReshares } from '../../../src/storage/reshares';
 
 export default function ResharedDispatchesScreen() {
@@ -61,7 +61,7 @@ export default function ResharedDispatchesScreen() {
       setUser(identity);
 
       const records = await getReshares();
-      const allPosts = await getPosts();
+      const allPosts = await getVisiblePosts();
 
       const userRecords = records.filter(
         (record) => record.userId === userId,

@@ -258,7 +258,7 @@ export default function CallScreen() {
           ]}
         >
           {call.status === 'ringing'
-            ? 'Calling…'
+            ? 'Not connected'
             : call.status === 'ended'
               ? 'Call ended'
               : call.status}
@@ -287,8 +287,9 @@ export default function CallScreen() {
               },
             ]}
           >
-            The call session is ready, but live voice and
-            video transport has not been connected yet.
+            Live voice and video calls need a network service
+            this version does not have yet. No one is being
+            called; this only records the attempt.
           </Text>
         </View>
       </View>

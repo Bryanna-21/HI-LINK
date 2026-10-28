@@ -14,7 +14,8 @@
     "android": {
       "package": "com.unilink.app",
       "adaptiveIcon": {
-        "backgroundColor": "#0B6BFF"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#000000"
       }
     },
     "web": {
@@ -27,16 +28,17 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/splash.png",
-          "imageWidth": 220,
-          "backgroundColor": "#0B6BFF"
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 240,
+          "backgroundColor": "#000000"
         }
       ],
       "expo-video",
       "expo-localization",
       "expo-font",
       "expo-audio",
-      "expo-asset"
+      "expo-asset",
+      "expo-status-bar"
     ],
     "experiments": {
       "typedRoutes": true

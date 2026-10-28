@@ -40,6 +40,8 @@ export interface Message {
   deliveredAt?: string;
   readAt?: string;
   replyToMessageId?: string;
+  /** On a recipient's copy: the id of the sender's original message. */
+  originId?: string;
   deletedAt?: string;
 }
 
@@ -48,6 +50,8 @@ export interface Conversation {
   type: ConversationType;
   category: ConversationCategory;
   ownerId?: string;
+  /** Shared by every account's copy of one conversation on this device. */
+  threadId?: string;
   title?: string;
   avatarUri?: string;
   participants: ChatParticipant[];

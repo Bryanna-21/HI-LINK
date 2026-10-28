@@ -1,3 +1,4 @@
+import { getVisiblePosts } from '../../src/storage/visibility';
 import { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
@@ -18,15 +19,12 @@ import {
   clearIdentity,
   getIdentity,
 } from '../../src/storage/identity';
-import {
-  getLocal,
-  setLocal,
-} from '../../src/storage/localStore';
 import { setOnboardingComplete } from '../../src/storage/onboarding';
 import { setSessionActive } from '../../src/storage/session';
 import { HiLinkUser } from '../../src/models/user';
-import { getPosts, getPostsByAuthor } from '../../src/storage/posts';
+import { getPostsByAuthor } from '../../src/storage/posts';
 import { Post } from '../../src/models/post';
+import { getGrantsFor } from '../../src/storage/roles';
 import { getReshares } from '../../src/storage/reshares';
 import { getLikedPostIds } from '../../src/storage/likedPosts';
 import {
@@ -34,8 +32,6 @@ import {
   unhidePost,
 } from '../../src/storage/hiddenPosts';
 
-const PROFILE_PICTURE_KEY = 'profile_picture_uri';
-const COVER_IMAGE_KEY = 'cover_image_uri';
 
 export default function MeScreen() {
   const { colors } = useTheme();
@@ -43,6 +39,7 @@ export default function MeScreen() {
   const { width } = useWindowDimensions();
 
   const [identity, setIdentity] = useState<HiLinkUser | null>(null);
+  const [hasAdminGrant, setHasAdminGrant] = useState(false);
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const [userPosts, setUserPosts] = useState<Post[]>([]);
@@ -73,25 +70,19 @@ export default function MeScreen() {
 
   async function loadProfile() {
     const user = await getIdentity();
-    const savedProfilePicture = await getLocal<string | null>(
-      PROFILE_PICTURE_KEY,
-      null,
-    );
-    const savedCoverImage = await getLocal<string | null>(
-      COVER_IMAGE_KEY,
-      null,
+    setHasAdminGrant(
+      user ? (await getGrantsFor(user.id)).some((grant) => grant.role !== 'teacher') : false,
     );
 
+    // The signed-in identity is the only source of the photos. (Older builds
+    // also kept a device-global copy, which leaked one account's photo into
+    // another account's profile.)
     setIdentity(user);
-    setProfilePicture(
-      user?.avatarUri ?? savedProfilePicture,
-    );
-    setCoverImage(
-      user?.coverUri ?? savedCoverImage,
-    );
+    setProfilePicture(user?.avatarUri ?? null);
+    setCoverImage(user?.coverUri ?? null);
 
     if (user) {
-      const allPosts = await getPosts();
+      const allPosts = await getVisiblePosts();
       const posts = allPosts.filter(
         (post) => post.authorId === user.id,
       );
@@ -173,7 +164,6 @@ export default function MeScreen() {
 
     if (type === 'profile') {
       setProfilePicture(uri);
-      await setLocal(PROFILE_PICTURE_KEY, uri);
 
       if (identity) {
         const updatedIdentity: HiLinkUser = {
@@ -194,7 +184,6 @@ export default function MeScreen() {
       }
     } else {
       setCoverImage(uri);
-      await setLocal(COVER_IMAGE_KEY, uri);
 
       if (identity) {
         const updatedIdentity: HiLinkUser = {
@@ -207,8 +196,11 @@ export default function MeScreen() {
 
         const { saveIdentity } =
           await import('../../src/storage/identity');
+        const { upsertUser } =
+          await import('../../src/storage/users');
 
         await saveIdentity(updatedIdentity);
+        await upsertUser(updatedIdentity);
       }
     }
   }
@@ -507,6 +499,45 @@ export default function MeScreen() {
                 Edit Profile
               </Text>
             </Pressable>
+          </View>
+        </View>
+
+        <View
+          style={[
+            styles.contentSection,
+            { marginHorizontal: horizontalPadding, marginTop: 20 },
+          ]}
+        >
+          <View style={styles.shortcutGrid}>
+            {([
+              ['bookmark-outline', 'Saved', '/saved'],
+              ['school-outline', 'Academics', '/academics'],
+              ['calendar-outline', 'Timetable', '/timetable'],
+              ['people-circle-outline', 'Communities', '/communities'],
+              ['calendar-number-outline', 'Events', '/events'],
+              ['megaphone-outline', 'Announcements', '/announcements'],
+              ['business-outline', 'Opportunities', '/opportunities'],
+              ['warning-outline', 'Emergency', '/emergency'],
+              ['document-text-outline', 'My posts', '/my-posts'],
+              ['briefcase-outline', 'Portfolio', '/portfolio'],
+              ['person-add-outline', 'Follow requests', '/follow-requests'],
+              ...(hasAdminGrant
+                ? ([['shield-checkmark-outline', 'Administration', '/admin']] as const)
+                : []),
+            ] as const).map(([icon, label, href]) => (
+              <Pressable
+                key={label}
+                style={styles.shortcut}
+                onPress={() => router.push(href as never)}
+                accessibilityRole="button"
+                accessibilityLabel={label}
+              >
+                <Ionicons name={icon as never} size={22} color={colors.text} />
+                <Text style={styles.shortcutText} numberOfLines={1}>
+                  {label}
+                </Text>
+              </Pressable>
+            ))}
           </View>
         </View>
 
@@ -1311,6 +1342,31 @@ function createStyles(colors: ThemeColors) {
 
   contentSection: {
     marginTop: 24,
+  },
+
+  shortcutGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+
+  shortcut: {
+    width: '31%',
+    flexGrow: 1,
+    minHeight: 64,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingHorizontal: 6,
+  },
+
+  shortcutText: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '600',
   },
 
   contentTabs: {

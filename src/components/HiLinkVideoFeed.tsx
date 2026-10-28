@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { usePauseWhenAway } from '../hooks/usePauseWhenAway';
 import {
   Dimensions,
   FlatList,
@@ -23,6 +24,13 @@ import {
 
 import { Post } from '../models/post';
 import { updatePost } from '../storage/posts';
+import { getActiveUserId } from '../storage/accountScope';
+import {
+  getReactionSummary,
+  getUserReaction,
+  setUserReaction,
+} from '../storage/reactions';
+import { isPostSaved, toggleSavedPost } from '../storage/savedPosts';
 import { recordVideoWatch } from '../storage/videoHistory';
 import {
   ThemeColors,
@@ -82,6 +90,8 @@ function VideoFeedItem({
     },
   );
 
+  usePauseWhenAway(player);
+
   const lastTapRef =
     useRef<number | null>(null);
 
@@ -93,6 +103,55 @@ function VideoFeedItem({
 
   const [saved, setSaved] =
     useState(false);
+
+  const [likeCount, setLikeCount] =
+    useState(post.likes);
+
+  // Reels share the feed's reaction ledger and saved list: load this
+  // account's real state instead of assuming "not liked / not saved".
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      const [mine, summary, isSaved] = await Promise.all([
+        getUserReaction(post.id),
+        getReactionSummary(post.id),
+        isPostSaved(post.id),
+      ]);
+
+      if (cancelled) {
+        return;
+      }
+
+      setLiked(mine !== null);
+      setLikeCount(summary.total);
+      setSaved(isSaved);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [post.id]);
+
+  const applyLike = useCallback(
+    async (nextLiked: boolean) => {
+      const userId = await getActiveUserId();
+
+      if (!userId) {
+        return;
+      }
+
+      const result = await setUserReaction(
+        post.id,
+        userId,
+        nextLiked ? 'like' : null,
+      );
+
+      setLiked(result.reaction !== null);
+      setLikeCount(result.summary.total);
+    },
+    [post.id],
+  );
 
   const [currentTime, setCurrentTime] =
     useState(0);
@@ -210,14 +269,7 @@ function VideoFeedItem({
         lastTapRef.current = null;
 
         if (!liked) {
-          setLiked(true);
-
-          void updatePost({
-            ...post,
-            likes: post.likes + 1,
-            updatedAt:
-              new Date().toISOString(),
-          });
+          void applyLike(true);
         }
 
         return;
@@ -234,42 +286,16 @@ function VideoFeedItem({
       }, 280);
     }, [
       liked,
-      post,
+      applyLike,
       togglePlayback,
     ]);
 
   async function toggleLike() {
-    const nextLiked = !liked;
-
-    setLiked(nextLiked);
-
-    await updatePost({
-      ...post,
-      likes: Math.max(
-        0,
-        post.likes +
-          (nextLiked ? 1 : -1),
-      ),
-      updatedAt:
-        new Date().toISOString(),
-    });
+    await applyLike(!liked);
   }
 
   async function toggleSave() {
-    const nextSaved = !saved;
-
-    setSaved(nextSaved);
-
-    await updatePost({
-      ...post,
-      saves: Math.max(
-        0,
-        post.saves +
-          (nextSaved ? 1 : -1),
-      ),
-      updatedAt:
-        new Date().toISOString(),
-    });
+    setSaved(await toggleSavedPost(post.id));
   }
 
   async function shareVideo() {
@@ -441,10 +467,7 @@ function VideoFeedItem({
             <Text
               style={styles.actionText}
             >
-              {formatCount(
-                post.likes +
-                  (liked ? 1 : 0),
-              )}
+              {formatCount(likeCount)}
             </Text>
           </Pressable>
 
@@ -770,12 +793,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
 
   videoTouch: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 2,
   },
 
   pauseOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems:
       'center',
     justifyContent:

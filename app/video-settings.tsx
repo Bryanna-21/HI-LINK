@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -75,10 +76,10 @@ export default function VideoSettingsScreen() {
     });
   }
 
-  function openComingSoon(title: string) {
+  function showAbout() {
     Alert.alert(
-      title,
-      `${title} settings will be available here as the HI-LINK feature is connected.`,
+      'About HI-LINK',
+      `Version ${Constants.expoConfig?.version ?? 'unknown'}\n\nHi-Link is a student and school community app. Data is stored on this device until online sync is available.`,
     );
   }
 
@@ -164,7 +165,7 @@ export default function VideoSettingsScreen() {
             icon="person-outline"
             title="Account"
             subtitle="Identity, username and account information"
-            onPress={() => openComingSoon('Account')}
+            onPress={() => router.push('/account')}
             colors={colors}
             divider
           />
@@ -238,7 +239,7 @@ export default function VideoSettingsScreen() {
           icon="notifications-outline"
           title="Notifications"
           subtitle="Messages, calls, events and campus alerts"
-          onPress={() => openComingSoon('Notifications')}
+          onPress={() => router.push('/notifications')}
           colors={colors}
         />
 
@@ -258,7 +259,7 @@ export default function VideoSettingsScreen() {
           icon="chatbubbles-outline"
           title="Chats"
           subtitle="Chat preferences and message controls"
-          onPress={() => openComingSoon('Chats')}
+          unavailable
           colors={colors}
         />
 
@@ -266,7 +267,7 @@ export default function VideoSettingsScreen() {
           icon="call-outline"
           title="Calls"
           subtitle="Voice and video call preferences"
-          onPress={() => openComingSoon('Calls')}
+          unavailable
           colors={colors}
         />
 
@@ -393,7 +394,7 @@ export default function VideoSettingsScreen() {
           icon="phone-portrait-outline"
           title="Storage & Data"
           subtitle="Downloads, media and data usage"
-          onPress={() => openComingSoon('Storage & Data')}
+          onPress={() => router.push('/storage')}
           colors={colors}
         />
 
@@ -401,7 +402,7 @@ export default function VideoSettingsScreen() {
           icon="cloud-upload-outline"
           title="Backup"
           subtitle="Protect your local HI-LINK data"
-          onPress={() => openComingSoon('Backup')}
+          unavailable
           colors={colors}
         />
 
@@ -413,7 +414,7 @@ export default function VideoSettingsScreen() {
           icon="information-circle-outline"
           title="About HI-LINK"
           subtitle="Version, credits and application information"
-          onPress={() => openComingSoon('About HI-LINK')}
+          onPress={showAbout}
           colors={colors}
         />
 
@@ -472,13 +473,16 @@ function SettingsRow({
   onPress,
   colors,
   divider = false,
+  unavailable = false,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   title: string;
   subtitle: string;
-  onPress: () => void;
+  onPress?: () => void;
   colors: ThemeColors;
   divider?: boolean;
+  /** Clearly unavailable rows are disabled instead of opening a dead alert. */
+  unavailable?: boolean;
 }) {
   const styles = createStyles(colors);
 
@@ -489,8 +493,11 @@ function SettingsRow({
         divider && styles.settingsRowDivider,
       ]}
       onPress={onPress}
+      disabled={unavailable}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: unavailable }}
     >
-      <View style={styles.settingsIcon}>
+      <View style={[styles.settingsIcon, unavailable && { opacity: 0.5 }]}>
         <Ionicons
           name={icon}
           size={21}
@@ -499,20 +506,22 @@ function SettingsRow({
       </View>
 
       <View style={styles.settingsCopy}>
-        <Text style={styles.settingsTitle}>
+        <Text style={[styles.settingsTitle, unavailable && { opacity: 0.55 }]}>
           {title}
         </Text>
 
         <Text style={styles.settingsSubtitle}>
-          {subtitle}
+          {unavailable ? 'Not available yet' : subtitle}
         </Text>
       </View>
 
-      <Ionicons
-        name="chevron-forward"
-        size={19}
-        color={colors.muted}
-      />
+      {unavailable ? null : (
+        <Ionicons
+          name="chevron-forward"
+          size={19}
+          color={colors.muted}
+        />
+      )}
     </Pressable>
   );
 }

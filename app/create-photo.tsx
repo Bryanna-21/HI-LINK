@@ -1,3 +1,4 @@
+import { CommunityPicker } from '../src/components/CommunityPicker';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -93,6 +94,10 @@ export default function CreatePhotoScreen() {
   const [tagsInput, setTagsInput] = useState('');
   const [audience, setAudience] =
     useState<PostVisibility>('everyone');
+  const [communityId, setCommunityId] =
+    useState<string | undefined>(undefined);
+  const [pickerOpen, setPickerOpen] =
+    useState(false);
 
   const [subject, setSubject] = useState('');
   const [resourceType, setResourceType] =
@@ -173,6 +178,7 @@ export default function CreatePhotoScreen() {
           .join(' ') ?? '',
       );
       setAudience(post.visibility);
+      setCommunityId(post.communityId);
       setSubject(post.subject ?? '');
       setResourceType(
         post.resourceType ?? '',
@@ -289,12 +295,10 @@ export default function CreatePhotoScreen() {
       return;
     }
 
-    if (
-      audience === 'my_group'
-    ) {
+    if (audience === 'my_group' && !communityId) {
       Alert.alert(
-        'Group audience',
-        'Group audiences will become available when Hi-Link groups are enabled. Please choose another audience for now.',
+        'Choose a group',
+        'Pick the community this post is for.',
       );
       return;
     }
@@ -338,6 +342,8 @@ export default function CreatePhotoScreen() {
             undefined,
 
           visibility: audience,
+          communityId:
+          audience === 'my_group' ? communityId : undefined,
 
           commentsAllowed,
 
@@ -402,6 +408,8 @@ export default function CreatePhotoScreen() {
             : undefined,
 
         visibility: audience,
+        communityId:
+          audience === 'my_group' ? communityId : undefined,
 
         commentsAllowed,
 
@@ -734,10 +742,15 @@ export default function CreatePhotoScreen() {
                 return (
                   <Pressable
                     key={item.value}
-                    onPress={() =>
-                      setAudience(
-                        item.value,
-                      )
+                    onPress={() => {
+                      if (item.value === 'my_group') {
+                        setPickerOpen(true);
+                        return;
+                      }
+
+                      setCommunityId(undefined);
+                      setAudience(item.value);
+                    }
                     }
                     style={[
                       styles.audienceOption,
@@ -890,6 +903,15 @@ export default function CreatePhotoScreen() {
           </View>
         </View>
       </ScrollView>
+      <CommunityPicker
+        visible={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onPick={(id) => {
+          setCommunityId(id);
+          setAudience('my_group');
+          setPickerOpen(false);
+        }}
+      />
     </KeyboardAvoidingView>
   );
 }
